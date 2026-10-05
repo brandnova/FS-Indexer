@@ -1,0 +1,45 @@
+# OS
+.DS_Store
+
+# Agent (Go): config holds the access token
+/agent/config.json
+/agent/agent
+/agent/agent.exe
+
+# Mobile (Expo / React Native)
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Generated native folders
+/mobile/ios/
+/mobile/android/
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# Debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.pem
+
+# Local env files
+.env*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# Custom
+NEXT.md
