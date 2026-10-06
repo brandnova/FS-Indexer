@@ -43,3 +43,6 @@ yarn-error.*
 
 # Custom
 NEXT.md
+RELEASING.md
+STORE_LISTING.md
+/mobile/assets/icons/

@@ -17,7 +17,9 @@
       "bundleIdentifier": "com.brandnova.fsindexer",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Connect to your PC on the local network to sync its file index.",
-        "NSBonjourServices": ["_fs-sync._tcp"],
+        "NSBonjourServices": [
+          "_fs-sync._tcp"
+        ],
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }
@@ -33,7 +35,9 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.ACCESS_WIFI_STATE",
-        "android.permission.CHANGE_WIFI_MULTICAST_STATE"
+        "android.permission.CHANGE_WIFI_MULTICAST_STATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -56,6 +60,12 @@
           "cameraPermission": "Allow $(PRODUCT_NAME) to scan the pairing QR code shown by your PC."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "1729888d-5683-42e4-a690-12c7d6f74581"
+      }
+    },
+    "owner": "mstrn0v4"
   }
 }

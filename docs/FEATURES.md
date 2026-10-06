@@ -46,58 +46,86 @@ Living document. Update it whenever a feature is added, changed, or moved betwee
 - [x] Offline multi-word substring search
 - [x] Lucide icon set
 
-## Post-MVP checklist
+## Post-MVP roadmap
 
-### UI/UX
-- [ ] General UI/UX optimization for the mobile client (visual design pass, typography and spacing, loading/empty/error states, file-type icons, dark mode, animations, accessibility)
-- [ ] General UI/UX optimization for the agent (clearer terminal output and startup banner, friendlier errors, config helpers)
+Work top to bottom: each milestone builds on the one before it. Effort: S = under 2 hours, M = about half a day, L = a day or more. Items marked (new) were added when this roadmap was reordered.
 
-### Security and pairing
-- [ ] Localhost pairing page (`/pair`, loopback only, shows the QR in a browser) (about 30 to 45 min)
-- [ ] Per-device tokens via a one-time pairing code, `devices.json` on the agent, revoke a single phone (about 2 to 3 hrs)
-- [ ] Short-lived QR codes so the QR is no longer a permanent secret
-- [ ] TLS with a self-signed cert; certificate fingerprint carried in the QR and pinned by the phone
-- [ ] Rate-limit failed auth attempts
+### Milestone 1: Release-ready
+Goal: anyone can download, install and trust a first public version.
+- [ ] Decide the final project name and rename everything before publishing (S)
+- [ ] LICENSE, README screenshots or a short GIF, SECURITY.md (S) (new)
+- [ ] Agent keeps `config.json` in the OS config folder by default (`-config` still overrides), so double-clicked and installed binaries behave the same everywhere (S) (new)
+- [ ] Agent `-version` flag, with the version injected at build time (S) (new)
+- [ ] Agent `-pair` flag to reprint the pairing QR and token without starting the server, and `-rotate-token` to generate a new token (S) (new)
+- [ ] Rate-limit failed auth attempts (S)
+- [ ] Sensitive-name ignores on by default (`.ssh`, `.gnupg`, `.aws`, `.env`, `*.kdbx`, `*.pem`, `*.key`) (S) (new)
+- [ ] Compatibility check: the app warns if the agent's API version isn't supported (S) (new)
+- [ ] Go tests (ignore rules, path building, auth middleware) and CI running `go vet`, `go test` and `tsc` on Linux, Windows and macOS (M) (new)
+- [ ] Test the agent on Windows and macOS (so far it has only run on Linux), including first-run firewall prompts (M) (new)
+- [ ] Release pipeline: GoReleaser + GitHub Actions publish agent binaries for Linux, macOS and Windows with checksums on every version tag (M)
+- [ ] Attach the Android APK to each GitHub Release (S)
 
-### Discovery
-- [ ] Multiple paired PCs
+### Milestone 2: Quick wins
+Small features that fit the project's core job of finding your files from your phone.
+- [ ] OS-aware default folders (Linux XDG user dirs, macOS standard folders, Windows known folders), with hidden and system folders ignored by default (M)
+- [ ] Recent files view (S)
+- [ ] Copy a file's path or name from the file details (S) (new)
+- [ ] Pinned folders for quick access (S) (new)
+- [ ] Auto-sync on app open when the PC is reachable and the index is stale (S) (new)
+- [ ] Home summary: entries and total size per root (S) (new)
+- [ ] File-type icons (images, audio, video, documents, archives, code) (S)
+- [ ] Filters (extension, size, date) and sort options (M)
+- [ ] Search by folder path as well as file name (needs a `path_lc` column and a migration) (S)
+- [ ] Configurable allowed networks (for example Tailscale's 100.64.0.0/10) so the app works away from home over a VPN (S) (new)
+- [ ] gzip for `/index`, only if the smoke-test payload sizes justify it (S)
 
-### Sync and performance
-- [ ] Delta sync (subtree hashes, fetch only what changed)
-- [ ] gzip for `/index`
-- [ ] File watcher for live index updates
-- [ ] Resume an interrupted sync
+### Milestone 3: Look and feel
+- [ ] General UI/UX optimization for the mobile client (visual design pass, typography and spacing, loading/empty/error states, dark mode, animations, accessibility) (L)
+- [ ] General UI/UX optimization for the agent (clearer terminal output and startup banner, friendlier errors, config helpers) (M)
+- [ ] Demo mode with a bundled sample index, so people (and store reviewers) can try the app without an agent (M) (new)
 
-### Browse and search
-- [ ] Real fuzzy search (FTS5 trigram) with ranking
-- [ ] Search by folder path as well as file name
-- [ ] Filters (extension, size, date) and sort options
-- [ ] Recent files view
+### Milestone 4: Agent management
+- [ ] Local web UI served by the agent (loopback only): status, roots, pairing QR page, rescan (L)
+- [ ] Add, remove and disable roots and edit ignore rules at runtime, with a folder picker (config written back, then rescan) (M)
+- [ ] Explicit opt-in for whole-home or whole-drive indexing, with hard exclusions (`/proc`, `/sys`, `/dev`, `/run`, OS system folders) (S)
+- [ ] gitignore-style `.ignore` file support (M)
+- [ ] Run in the background and start on login (systemd user unit, Windows startup entry or service, launchd) (M)
+- [ ] System tray icon that opens the web UI (M; may need per-OS build runners)
 
-### Files
-- [ ] `GET /api/v1/download` with path-traversal hardening
-- [ ] Open, preview and share files from the phone
+### Milestone 5: Security hardening
+Must be finished before any feature that serves file contents.
+- [ ] Per-device tokens via a one-time pairing code, `devices.json` on the agent, revoke a single phone (M)
+- [ ] Short-lived pairing codes so the QR stops being a permanent secret (S)
+- [ ] TLS with a self-signed cert; certificate fingerprint carried in the QR and pinned by the phone (M to L)
 
-### Multiple PCs
-- [ ] Manage multiple PCs from one app: pair several agents, switch between them, and browse or search per PC or across all of them
+### Milestone 6: Files
+- [ ] `GET /api/v1/download` with path-traversal hardening and range requests (M)
+- [ ] Open, preview and share files from the phone (M)
+- [ ] Upload from phone into a single configured drop folder on the PC (M, needs Milestone 5)
 
-### Platform and distribution
-- [ ] Development build / standalone APK; iOS build
-- [ ] Agent as a system service (systemd unit / Windows service) and tray icon
-- [ ] gitignore-style `.ignore` file support
+### Milestone 7: Scale and reach
+- [ ] Manage multiple PCs from one app: pair several agents, switch between them, browse or search per PC or across all (L)
+- [ ] Phone as an additional source: index and search folders chosen on the phone, Android first (L, builds on multi-PC)
+- [ ] Delta sync, file watcher for live updates, resumable sync (L, driven by real numbers)
+- [ ] Real fuzzy search (FTS5 trigram) with ranking (M)
 
-### Agent configuration
-- [ ] OS-aware default folders (Linux XDG user dirs, macOS standard folders, Windows known folders), with hidden and system folders ignored by default
-- [ ] Explicit opt-in for whole-home or whole-drive indexing, with hard exclusions (`/proc`, `/sys`, `/dev`, `/run`, OS system folders)
-- [ ] Add, remove and disable roots and edit ignore rules at runtime (config written back, then rescan)
-- [ ] Local web UI served by the agent (loopback only): status, roots, pairing QR, rescan
-- [ ] System tray icon that opens the web UI
+### Milestone 8: Publishing
+- [ ] Linux packages (`.deb`, `.rpm`), Homebrew tap, Scoop and winget manifests (M)
+- [ ] Code signing: Windows signing, macOS Developer ID and notarization (M, needs accounts)
+- [ ] Google Play release: privacy policy, data safety form, closed testing (M)
+- [ ] App Store release: Local Network justification, reviewer notes, demo mode (M, needs Apple Developer account)
+- [ ] OTA updates for JS-only fixes via EAS Update (S, optional)
+- [ ] Localization and accessibility pass (M)
+- [ ] Third-party license notices generated by tooling (agent and app) (S) (new)
 
-### Transfer and sources
-- [ ] Upload from phone into a single configured drop folder on the PC
-- [ ] Phone as an additional source: index and search folders chosen on the phone (Android first)
+### Why this order
+- **Release-ready comes first** because a few things are painful to retrofit once people use the app: where the config lives, the version number, and the project name.
+- **TLS comes before downloads.** In my earlier order I put downloads first, and I'm changing that. File names are sensitive, but file contents are more so, and plain HTTP on a shared Wi-Fi exposes them.
+- **Look and feel comes before the stores,** but after the quick wins, so the polish pass covers the final feature set.
+- **Delta sync and the file watcher wait for real numbers.** If the smoke test shows your index syncs in seconds, they may never be worth building.
 
 ## Changelog
 
 - 2026-10-05: Phases 1 and 2 complete. Pairing QR display added to the agent (not in the original plan).
 - 2026-10-05: Phases 3 to 7 complete. mDNS advertising and discovery, auto-reconnect, Lucide icons.
+- 2026-10-05: Post-MVP roadmap reordered into milestones.

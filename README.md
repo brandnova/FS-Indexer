@@ -126,3 +126,9 @@ Traffic is plain HTTP on your local network, protected by a shared token, and th
 ## Features & Roadmap
 
 See [`docs/FEATURES.md`](docs/FEATURES.md) for what's shipped, MVP progress by phase, and the post-MVP checklist.
+
+## License, security and privacy
+
+- License: [MIT](LICENSE)
+- Security policy and known limitations: [SECURITY.md](SECURITY.md)
+- Privacy policy: [docs/PRIVACY.md](docs/PRIVACY.md)
