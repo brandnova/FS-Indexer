@@ -27,6 +27,7 @@ export interface PingResponse {
   device_id: string;
   name: string;
   version: string;
+  api_version?: number; // absent on agents from before this field existed (they speak v1)
   indexed_at: number;
   file_count: number;
   scanning: boolean;

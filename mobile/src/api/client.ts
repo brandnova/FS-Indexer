@@ -3,7 +3,11 @@
 import { fetch } from 'expo/fetch';
 import type { Candidate, PingResponse } from '../types';
 
-export type ApiErrorKind = 'unauthorized' | 'forbidden' | 'network' | 'timeout' | 'server';
+// The range of agent API versions this app understands.
+export const MIN_API_VERSION = 1;
+export const MAX_API_VERSION = 1;
+
+export type ApiErrorKind = 'unauthorized' | 'forbidden' | 'network' | 'timeout' | 'server' | 'incompatible';
 
 const MESSAGES: Record<ApiErrorKind, string> = {
   unauthorized: 'The PC rejected the token. Check it and try again.',
@@ -11,6 +15,7 @@ const MESSAGES: Record<ApiErrorKind, string> = {
   network: 'Could not reach the PC.',
   timeout: 'The PC did not respond in time.',
   server: 'Unexpected response. Is this the FS agent?',
+  incompatible: 'This app and the agent on your PC are not compatible. Update both to the latest version.',
 };
 
 export class ApiError extends Error {
@@ -67,6 +72,9 @@ export async function apiRequest(c: Candidate, path: string, opts: RequestOption
     });
     if (res.status === 401) throw new ApiError('unauthorized');
     if (res.status === 403) throw new ApiError('forbidden');
+    if (res.status === 429) {
+      throw new ApiError('server', 'Too many failed attempts. Wait a minute and try again.');
+    }
     if (!res.ok && !allow.includes(res.status)) {
       throw new ApiError('server', `The PC returned an error (${res.status}).`);
     }
@@ -79,11 +87,23 @@ export async function apiRequest(c: Candidate, path: string, opts: RequestOption
   }
 }
 
+/** Pings the agent and refuses agents whose API version this app can't speak. */
 export async function ping(c: Candidate): Promise<PingResponse> {
   const res = await apiRequest(c, '/ping');
+
+  let body: PingResponse;
   try {
-    return (await res.json()) as PingResponse;
+    body = (await res.json()) as PingResponse;
   } catch {
     throw new ApiError('server');
   }
+
+  const api = body.api_version ?? 1; // agents before this field existed speak v1
+  if (api > MAX_API_VERSION) {
+    throw new ApiError('incompatible', 'The agent on your PC is newer than this app supports. Please update the app.');
+  }
+  if (api < MIN_API_VERSION) {
+    throw new ApiError('incompatible', 'The agent on your PC is too old for this app. Please update the agent.');
+  }
+  return body;
 }

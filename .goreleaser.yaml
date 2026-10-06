@@ -1,0 +1,43 @@
+version: 2
+project_name: fsagent
+
+before:
+  hooks:
+    - go mod tidy -C agent
+
+builds:
+  - id: agent
+    dir: agent
+    main: .
+    binary: fsagent
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, windows, darwin]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  draft: true      # review notes and attach the APK before publishing
+  prerelease: auto # tags like v0.1.0-rc1 are marked as pre-releases

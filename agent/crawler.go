@@ -22,6 +22,7 @@ type Entry struct {
 
 // Names (or glob patterns) skipped everywhere, matched case-insensitively.
 var defaultIgnores = []string{
+	// Build output and system noise
 	"node_modules",
 	".git",
 	"__pycache__",
@@ -32,6 +33,18 @@ var defaultIgnores = []string{
 	".trash*",
 	".ds_store",
 	"thumbs.db",
+
+	// Secrets and credentials: these names are never indexed
+	".ssh",
+	".gnupg",
+	".aws",
+	".env",
+	".env.*",
+	"*.kdbx",
+	"*.pem",
+	"*.key", // also matches Apple Keynote files
+	"*.p12",
+	"*.pfx",
 }
 
 type ignorer struct {

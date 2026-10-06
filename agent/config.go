@@ -11,6 +11,10 @@ import (
 	"strings"
 )
 
+// appDirName is the folder created inside the OS config directory.
+// Change it together with the project name.
+const appDirName = "fs-indexer"
+
 // Root is one folder to index. Label becomes the first segment of every
 // path under it (e.g. "Documents/cv/resume.pdf").
 type Root struct {
@@ -26,6 +30,50 @@ type Config struct {
 	Roots        []Root   `json:"roots"`
 	ExtraIgnores []string `json:"extra_ignores"`
 }
+
+// ---------- where the config lives ----------
+
+// DefaultConfigPath is <user config dir>/fs-indexer/config.json:
+// ~/.config on Linux, %AppData% on Windows, ~/Library/Application Support on macOS.
+func DefaultConfigPath() string {
+	dir, err := os.UserConfigDir()
+	if err != nil || dir == "" {
+		return "config.json"
+	}
+	return filepath.Join(dir, appDirName, "config.json")
+}
+
+// ResolveConfigPath picks the config file to use and returns an optional
+// notice to show the user.
+func ResolveConfigPath(flagValue string) (path string, notice string) {
+	def := DefaultConfigPath()
+	return pickConfigPath(flagValue, fileExists(def), fileExists("config.json"), def)
+}
+
+// pickConfigPath order: -config flag, then the default location if it exists,
+// then a legacy ./config.json, then the default location (created on first run).
+func pickConfigPath(flagValue string, defaultExists, legacyExists bool, defaultPath string) (string, string) {
+	switch {
+	case flagValue != "":
+		return flagValue, ""
+	case defaultExists:
+		return defaultPath, ""
+	case legacyExists:
+		return "config.json", fmt.Sprintf(
+			"using ./config.json from the current folder. New installs keep it at %s; move it there (or pass -config) to run from anywhere.",
+			defaultPath,
+		)
+	default:
+		return defaultPath, ""
+	}
+}
+
+func fileExists(p string) bool {
+	st, err := os.Stat(p)
+	return err == nil && !st.IsDir()
+}
+
+// ---------- loading and saving ----------
 
 // LoadConfig reads config.json. If the file doesn't exist it is created with
 // safe defaults, and any missing id/token is generated and saved back, so the
@@ -59,6 +107,50 @@ func LoadConfig(configPath string) (*Config, error) {
 
 	if err := cfg.normalizeRoots(); err != nil {
 		return nil, err
+	}
+	return cfg, nil
+}
+
+// ReadConfig reads an existing config without creating, normalizing or
+// rewriting anything. Used by -pair, which must never touch the file.
+func ReadConfig(configPath string) (*Config, error) {
+	cfg, err := readRaw(configPath)
+	if err != nil {
+		return nil, err
+	}
+	if cfg.Token == "" || cfg.DeviceID == "" {
+		return nil, fmt.Errorf("%s is incomplete - run the agent once to finish setting it up", configPath)
+	}
+	cfg.applyDefaults()
+	return cfg, nil
+}
+
+// RotateToken replaces the access token and saves the file. Roots are written
+// back exactly as the user wrote them (e.g. "~/Documents" stays "~/Documents").
+func RotateToken(configPath string) (*Config, error) {
+	cfg, err := readRaw(configPath)
+	if err != nil {
+		return nil, err
+	}
+	cfg.applyDefaults()
+	cfg.Token = randomHex(16)
+	if err := saveConfig(configPath, cfg); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func readRaw(configPath string) (*Config, error) {
+	data, err := os.ReadFile(configPath)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("%s does not exist yet - run the agent once to create it", configPath)
+	}
+	if err != nil {
+		return nil, err
+	}
+	cfg := &Config{}
+	if err := json.Unmarshal(data, cfg); err != nil {
+		return nil, fmt.Errorf("parse %s: %w", configPath, err)
 	}
 	return cfg, nil
 }
@@ -111,7 +203,7 @@ func (c *Config) applyDefaults() bool {
 // and checks that every root exists and has a unique label.
 func (c *Config) normalizeRoots() error {
 	if len(c.Roots) == 0 {
-		return errors.New(`no roots configured - add at least one folder to "roots" in config.json`)
+		return errors.New(`no roots configured - add at least one folder to "roots" in the config file`)
 	}
 
 	home, _ := os.UserHomeDir()
@@ -158,6 +250,11 @@ func (c *Config) normalizeRoots() error {
 }
 
 func saveConfig(configPath string, cfg *Config) error {
+	if dir := filepath.Dir(configPath); dir != "." {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return err
+		}
+	}
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return err

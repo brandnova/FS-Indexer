@@ -5,26 +5,63 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 )
 
+const binaryName = "fsagent"
+
 func main() {
-	configPath := flag.String("config", "config.json", "path to config file")
+	configFlag := flag.String("config", "", "path to the config file (default: <user config dir>/"+appDirName+"/config.json)")
 	dump := flag.Bool("dump", false, "print the index as NDJSON to stdout and exit")
 	hostFlag := flag.String("host", "", "override the IP address encoded in the pairing QR code")
 	noMDNS := flag.Bool("no-mdns", false, "don't advertise this agent on the local network")
+	showVersion := flag.Bool("version", false, "print the version and exit")
+	pair := flag.Bool("pair", false, "print the pairing QR code and token, then exit (does not start the server)")
+	rotate := flag.Bool("rotate-token", false, "generate a new access token, print the pairing QR code, then exit")
 	flag.Parse()
 
-	cfg, err := LoadConfig(*configPath)
-	if err != nil {
-		log.Fatalf("config: %v", err)
+	if *showVersion {
+		fmt.Printf("%s %s (%s %s/%s)\n", binaryName, version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+		return
 	}
+
+	configPath, notice := ResolveConfigPath(*configFlag)
+	if notice != "" {
+		log.Println(notice)
+	}
+
+	// Maintenance commands: touch the config, print, exit. No server.
+	if *rotate {
+		cfg, err := RotateToken(configPath)
+		if err != nil {
+			log.Fatalf("rotate token: %v", err)
+		}
+		fmt.Fprintln(os.Stderr, "New token saved. Restart the agent for it to take effect, then re-pair your phones.")
+		PrintPairing(cfg, hostOrDetect(*hostFlag))
+		return
+	}
+	if *pair {
+		cfg, err := ReadConfig(configPath)
+		if err != nil {
+			log.Fatalf("pair: %v", err)
+		}
+		PrintPairing(cfg, hostOrDetect(*hostFlag))
+		return
+	}
+
+	cfg, err := LoadConfig(configPath)
+	if err != nil {
+		log.Fatalf("config %s: %v", configPath, err)
+	}
+	log.Printf("config: %s", configPath)
 
 	// Debug mode: crawl once, print, exit. No server.
 	if *dump {
@@ -49,11 +86,8 @@ func main() {
 		}
 	}()
 
-	host := *hostFlag
-	if host == "" {
-		host = PreferredLANIP()
-	}
-	log.Printf("%s (%s) listening on %s", cfg.DeviceName, cfg.DeviceID, srv.Addr)
+	host := hostOrDetect(*hostFlag)
+	log.Printf("%s %s: %s (%s) listening on %s", binaryName, version, cfg.DeviceName, cfg.DeviceID, srv.Addr)
 
 	// mDNS is a convenience: if it fails, everything else still works.
 	if !*noMDNS {
@@ -75,6 +109,13 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(shutdownCtx)
+}
+
+func hostOrDetect(flagValue string) string {
+	if flagValue != "" {
+		return flagValue
+	}
+	return PreferredLANIP()
 }
 
 func dumpNDJSON(entries []Entry) {

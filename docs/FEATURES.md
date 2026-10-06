@@ -52,18 +52,19 @@ Work top to bottom: each milestone builds on the one before it. Effort: S = unde
 
 ### Milestone 1: Release-ready
 Goal: anyone can download, install and trust a first public version.
-- [ ] Decide the final project name and rename everything before publishing (S)
-- [ ] LICENSE, README screenshots or a short GIF, SECURITY.md (S) (new)
-- [ ] Agent keeps `config.json` in the OS config folder by default (`-config` still overrides), so double-clicked and installed binaries behave the same everywhere (S) (new)
-- [ ] Agent `-version` flag, with the version injected at build time (S) (new)
-- [ ] Agent `-pair` flag to reprint the pairing QR and token without starting the server, and `-rotate-token` to generate a new token (S) (new)
-- [ ] Rate-limit failed auth attempts (S)
-- [ ] Sensitive-name ignores on by default (`.ssh`, `.gnupg`, `.aws`, `.env`, `*.kdbx`, `*.pem`, `*.key`) (S) (new)
-- [ ] Compatibility check: the app warns if the agent's API version isn't supported (S) (new)
-- [ ] Go tests (ignore rules, path building, auth middleware) and CI running `go vet`, `go test` and `tsc` on Linux, Windows and macOS (M) (new)
-- [ ] Test the agent on Windows and macOS (so far it has only run on Linux), including first-run firewall prompts (M) (new)
-- [ ] Release pipeline: GoReleaser + GitHub Actions publish agent binaries for Linux, macOS and Windows with checksums on every version tag (M)
-- [ ] Attach the Android APK to each GitHub Release (S)
+- [ ] Decide the final project name and rename everything before publishing (S) (deferred: the current working name is fine until publishing)
+- [x] LICENSE (AGPL-3.0-or-later) and SECURITY.md (S)
+- [ ] README screenshots or a short GIF (S) (after Milestone 3)
+- [x] Agent keeps its config in the OS config folder by default (`-config` still overrides) (S) (new)
+- [x] Agent `-version` flag, with the version injected at build time (S) (new)
+- [x] Agent `-pair` flag to reprint the pairing QR and token, and `-rotate-token` to generate a new token (S) (new)
+- [x] Rate-limit failed auth attempts (S)
+- [x] Sensitive-name ignores on by default (`.ssh`, `.gnupg`, `.aws`, `.env`, `*.kdbx`, `*.pem`, `*.key`, `*.p12`, `*.pfx`) (S) (new)
+- [x] Compatibility check: the app warns if the agent's API version isn't supported (S) (new)
+- [x] Go tests and CI running `go vet`, `go test` and `tsc` (M) (new)
+- [ ] Test the agent on Windows (a friend) and macOS (method to be decided) including first-run firewall prompts (M) (new)
+- [x] Release pipeline: GoReleaser + GitHub Actions publish agent binaries with checksums on every version tag (M)
+- [x] Attach the Android APK to each GitHub Release (S)
 
 ### Milestone 2: Quick wins
 Small features that fit the project's core job of finding your files from your phone.
@@ -129,3 +130,4 @@ Must be finished before any feature that serves file contents.
 - 2026-10-05: Phases 1 and 2 complete. Pairing QR display added to the agent (not in the original plan).
 - 2026-10-05: Phases 3 to 7 complete. mDNS advertising and discovery, auto-reconnect, Lucide icons.
 - 2026-10-05: Post-MVP roadmap reordered into milestones.
+- 2026-10-05: Milestone 1 batch: config in the OS config folder, `-version`, `-pair`, `-rotate-token`, auth rate-limiting, sensitive-name ignores, API compatibility check, tests and CI, release pipeline. Relicensed to AGPL-3.0-or-later.

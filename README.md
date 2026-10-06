@@ -73,19 +73,21 @@ The first run creates `config.json`. Edit `roots` to choose your folders, then r
 
 ### 2. Run the app (phone)
 
+The app needs a **development build** (Expo Go can't load its native modules). Build one once:
+
 ```bash
 cd mobile
 npm install
+npx eas-cli@latest build --profile development --platform android
+```
+
+Install the APK, then start the dev server and open the app:
+
+```bash
 npx expo start
 ```
 
-Open it in Expo Go (SDK 54), tap **Scan QR code**, and scan the code from the agent's terminal. Then tap **Sync now** and **Browse files**.
-
-Nearby-PC discovery and automatic reconnection need native code, so they require a development build:
-
-```bash
-npx eas-cli@latest build --profile development --platform android
-```
+Tap **Scan QR code**, scan the code from the agent's terminal, then tap **Sync now** and **Browse files**.
 
 ### Security notes
 
