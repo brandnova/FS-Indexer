@@ -8,6 +8,7 @@ on:
 jobs:
   agent:
     strategy:
+      fail-fast: false # let every OS finish; one failure must not cancel the others
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
@@ -21,6 +22,24 @@ jobs:
           go-version-file: agent/go.mod
       - run: go vet ./...
       - run: go test ./...
+
+  cross-build:
+    # Builds the agent for every release target to catch linker/platform problems early.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: agent/go.mod
+      - name: Build every release target
+        run: |
+          for target in linux/amd64 linux/arm64 windows/amd64 windows/arm64 darwin/amd64 darwin/arm64; do
+            echo "building $target"
+            GOOS="${target%/*}" GOARCH="${target#*/}" CGO_ENABLED=0 go build -o /dev/null . || exit 1
+          done
 
   mobile:
     runs-on: ubuntu-latest
