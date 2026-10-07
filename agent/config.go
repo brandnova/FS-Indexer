@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,12 +24,16 @@ type Root struct {
 }
 
 type Config struct {
-	DeviceID     string   `json:"device_id"`
-	DeviceName   string   `json:"device_name"`
-	Port         int      `json:"port"`
-	Token        string   `json:"token"`
-	Roots        []Root   `json:"roots"`
-	ExtraIgnores []string `json:"extra_ignores"`
+	DeviceID        string   `json:"device_id"`
+	DeviceName      string   `json:"device_name"`
+	Port            int      `json:"port"`
+	Token           string   `json:"token"`
+	Roots           []Root   `json:"roots"`
+	ExtraIgnores    []string `json:"extra_ignores"`
+	IncludeHidden   bool     `json:"include_hidden"`
+	AllowedNetworks []string `json:"allowed_networks"`
+
+	allowedNets []*net.IPNet // parsed AllowedNetworks; not saved
 }
 
 // ---------- where the config lives ----------
@@ -75,9 +80,10 @@ func fileExists(p string) bool {
 
 // ---------- loading and saving ----------
 
-// LoadConfig reads config.json. If the file doesn't exist it is created with
+// LoadConfig reads the config file. If it doesn't exist it is created with
 // safe defaults, and any missing id/token is generated and saved back, so the
-// agent runs with zero manual setup.
+// agent runs with zero manual setup. With no folders configured it falls back
+// to the OS's standard folders (Documents, Downloads, ...).
 func LoadConfig(configPath string) (*Config, error) {
 	cfg := &Config{}
 	created := false
@@ -96,16 +102,30 @@ func LoadConfig(configPath string) (*Config, error) {
 	}
 
 	changed := cfg.applyDefaults()
+
+	if len(cfg.Roots) == 0 {
+		if roots := DefaultRoots(); len(roots) > 0 {
+			cfg.Roots = roots
+			changed = true
+			fmt.Fprintf(os.Stderr,
+				"No folders configured: indexing your standard folders (%s).\nEdit \"roots\" in %s to change this.\n",
+				rootLabels(roots), configPath)
+		}
+	}
+
 	if created || changed {
 		if err := saveConfig(configPath, cfg); err != nil {
 			return nil, err
 		}
 		if created {
-			fmt.Fprintf(os.Stderr, "Created %s - edit it to choose which folders to index.\n", configPath)
+			fmt.Fprintf(os.Stderr, "Created %s\n", configPath)
 		}
 	}
 
 	if err := cfg.normalizeRoots(); err != nil {
+		return nil, err
+	}
+	if err := cfg.parseAllowedNetworks(); err != nil {
 		return nil, err
 	}
 	return cfg, nil
@@ -156,17 +176,11 @@ func readRaw(configPath string) (*Config, error) {
 }
 
 func defaultConfig() *Config {
-	cfg := &Config{ExtraIgnores: []string{}}
-	if home, err := os.UserHomeDir(); err == nil {
-		docs := filepath.Join(home, "Documents")
-		if st, err := os.Stat(docs); err == nil && st.IsDir() {
-			cfg.Roots = []Root{{Path: "~/Documents", Label: "Documents"}}
-		}
+	return &Config{
+		Roots:           []Root{},
+		ExtraIgnores:    []string{},
+		AllowedNetworks: []string{},
 	}
-	if cfg.Roots == nil {
-		cfg.Roots = []Root{}
-	}
-	return cfg
 }
 
 // applyDefaults fills in missing values and reports whether anything changed.
@@ -196,6 +210,10 @@ func (c *Config) applyDefaults() bool {
 		c.ExtraIgnores = []string{}
 		changed = true
 	}
+	if c.AllowedNetworks == nil {
+		c.AllowedNetworks = []string{}
+		changed = true
+	}
 	return changed
 }
 
@@ -203,7 +221,7 @@ func (c *Config) applyDefaults() bool {
 // and checks that every root exists and has a unique label.
 func (c *Config) normalizeRoots() error {
 	if len(c.Roots) == 0 {
-		return errors.New(`no roots configured - add at least one folder to "roots" in the config file`)
+		return errors.New(`no roots configured and no standard folders were found - add at least one folder to "roots" in the config file`)
 	}
 
 	home, _ := os.UserHomeDir()
@@ -247,6 +265,33 @@ func (c *Config) normalizeRoots() error {
 		seen[key] = true
 	}
 	return nil
+}
+
+// parseAllowedNetworks validates "allowed_networks": extra networks (CIDR
+// notation, e.g. Tailscale's 100.64.0.0/10) that may connect in addition to
+// the local network. Ranges big enough to cover much of the internet are refused.
+func (c *Config) parseAllowedNetworks() error {
+	c.allowedNets = nil
+	for _, s := range c.AllowedNetworks {
+		_, n, err := net.ParseCIDR(strings.TrimSpace(s))
+		if err != nil {
+			return fmt.Errorf("allowed_networks: %q is not a network like 100.64.0.0/10", s)
+		}
+		ones, bits := n.Mask.Size()
+		if (bits == 32 && ones < 8) || (bits == 128 && ones < 16) {
+			return fmt.Errorf("allowed_networks: %q is too broad: it would allow a large part of the internet", s)
+		}
+		c.allowedNets = append(c.allowedNets, n)
+	}
+	return nil
+}
+
+func rootLabels(roots []Root) string {
+	labels := make([]string, len(roots))
+	for i, r := range roots {
+		labels[i] = r.Label
+	}
+	return strings.Join(labels, ", ")
 }
 
 func saveConfig(configPath string, cfg *Config) error {

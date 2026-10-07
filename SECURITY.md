@@ -28,7 +28,7 @@ Good-faith security research on your own devices and network is welcome. Please 
 
 ## What the software exposes
 
-The agent shares **file names, paths, sizes and modification times** for the folders you list in `roots`, to phones that present the access token. In the current version it does **not** serve file contents.
+The agent shares **file names, paths, sizes and modification times** for the folders in roots (by default your standard folders such as Documents and Downloads), to phones that present the access token. In the current version it does **not** serve file contents.
 
 ## Known limitations
 
@@ -60,3 +60,4 @@ These are documented design limits of the current version, not vulnerabilities, 
 - Keep `roots` as narrow as you can, and don't index folders with secrets.
 - Only use it on networks you trust, until TLS is available.
 - If the pairing QR or token was exposed, set `"token": ""` in `config.json` and restart the agent. A new token is generated, and you re-pair your phones.
+- Only add networks to `allowed_networks` that you control, such as a VPN range. Traffic over a VPN like Tailscale is encrypted by the VPN itself, but traffic on a plain network is not.

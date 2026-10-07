@@ -13,7 +13,7 @@ FS Indexer does not collect your data. There are no accounts, no analytics, no a
 
 **On your PC (the agent):**
 
-- It reads the folders you choose in its `config.json`.
+- It reads the folders listed in its `config.json` (by default, your standard folders such as Documents and Downloads)..
 - It builds a list of file names, paths, sizes and modification times, which it keeps in memory.
 - It shares that list only with phones that present your access token, over your local network.
 - It stores its settings (including the access token) in a local configuration file on your PC.

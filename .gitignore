@@ -3,8 +3,8 @@
 
 # Agent (Go): config holds the access token
 /agent/config.json
-/agent/agent
-/agent/agent.exe
+/agent/fsagent
+/agent/fsagent.exe
 
 # Mobile (Expo / React Native)
 node_modules/

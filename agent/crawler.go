@@ -51,6 +51,7 @@ type ignorer struct {
 	patterns []string
 }
 
+// newIgnorer combines the global defaults with extra patterns.
 func newIgnorer(extra []string) *ignorer {
 	all := append([]string{}, defaultIgnores...)
 	all = append(all, extra...)
@@ -58,6 +59,17 @@ func newIgnorer(extra []string) *ignorer {
 		all[i] = strings.ToLower(all[i])
 	}
 	return &ignorer{patterns: all}
+}
+
+// ignorerFor builds the full rule set for a config: global defaults, the OS
+// preset, hidden files (unless include_hidden is set) and the user's patterns.
+func ignorerFor(cfg *Config) *ignorer {
+	extra := append([]string{}, presetIgnores()...)
+	if !cfg.IncludeHidden {
+		extra = append(extra, ".*")
+	}
+	extra = append(extra, cfg.ExtraIgnores...)
+	return newIgnorer(extra)
 }
 
 func (ig *ignorer) match(name string) bool {
@@ -74,7 +86,7 @@ func (ig *ignorer) match(name string) bool {
 // the number of paths that had to be skipped because of errors (permissions,
 // files vanishing mid-scan, etc). Symlinks are never followed or indexed.
 func Crawl(cfg *Config) ([]Entry, int) {
-	ig := newIgnorer(cfg.ExtraIgnores)
+	ig := ignorerFor(cfg)
 	entries := make([]Entry, 0, 50_000)
 	skipped := 0
 

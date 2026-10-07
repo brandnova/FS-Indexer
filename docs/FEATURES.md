@@ -52,25 +52,24 @@ Work top to bottom: each milestone builds on the one before it. Effort: S = unde
 
 ### Milestone 1: Release-ready
 Goal: anyone can download, install and trust a first public version.
-- [ ] Decide the final project name and rename everything before publishing (S) (deferred: the current working name is fine until publishing)
-- [x] LICENSE (AGPL-3.0-or-later) and SECURITY.md (S)
+- [ ] Decide the final project name and rename everything before publishing (S) (deferred: the working name is fine until publishing)
+- [x] LICENSE (MIT) and SECURITY.md (S)
 - [ ] README screenshots or a short GIF (S) (after Milestone 3)
 - [x] Agent keeps its config in the OS config folder by default (`-config` still overrides) (S) (new)
 - [x] Agent `-version` flag, with the version injected at build time (S) (new)
 - [x] Agent `-pair` flag to reprint the pairing QR and token, and `-rotate-token` to generate a new token (S) (new)
 - [x] Rate-limit failed auth attempts (S)
-- [x] Sensitive-name ignores on by default (`.ssh`, `.gnupg`, `.aws`, `.env`, `*.kdbx`, `*.pem`, `*.key`, `*.p12`, `*.pfx`) (S) (new)
+- [x] Sensitive-name ignores on by default (S) (new)
 - [x] Compatibility check: the app warns if the agent's API version isn't supported (S) (new)
-- [x] Go tests and CI running `go vet`, `go test` and `tsc` (M) (new)
-- [ ] Test the agent on Windows (a friend) and macOS (method to be decided) including first-run firewall prompts (M) (new)
-- [x] Release pipeline: GoReleaser + GitHub Actions publish agent binaries with checksums on every version tag (M)
+- [x] Go tests and CI on Linux, Windows and macOS, plus a cross-build of every release target (M) (new)
+- [x] Windows: real-machine test (agent starts, QR shows, scan works) (new)
+- [ ] macOS: real-machine test (tester requested) (new)
+- [x] Release pipeline: GoReleaser + GitHub Actions publish agent binaries with checksums on every version tag; `v0.1.0-rc1` dry run published (M)
 - [x] Attach the Android APK to each GitHub Release (S)
-- [x] Windows code review and CI on a Windows runner (build and unit tests) (new)
-- [ ] Real-machine tests: Windows (agent starts and shows the QR on a real PC; detailed checks pending), macOS (tester requested) (M) (new)
 
 ### Milestone 2: Quick wins
 Small features that fit the project's core job of finding your files from your phone.
-- [ ] OS-aware default folders (Linux XDG user dirs, macOS standard folders, Windows known folders), with hidden and system folders ignored by default (M)
+- [x] OS-aware default folders (Linux XDG user dirs, macOS standard folders, Windows known folders), with hidden and system folders ignored by default (M)
 - [ ] Recent files view (S)
 - [ ] Copy a file's path or name from the file details (S) (new)
 - [ ] Pinned folders for quick access (S) (new)
@@ -79,7 +78,7 @@ Small features that fit the project's core job of finding your files from your p
 - [ ] File-type icons (images, audio, video, documents, archives, code) (S)
 - [ ] Filters (extension, size, date) and sort options (M)
 - [ ] Search by folder path as well as file name (needs a `path_lc` column and a migration) (S)
-- [ ] Configurable allowed networks (for example Tailscale's 100.64.0.0/10) so the app works away from home over a VPN (S) (new)
+- [x] Configurable allowed networks (for example Tailscale's 100.64.0.0/10) so the app works away from home over a VPN (S) (new)
 - [ ] gzip for `/index`, only if the smoke-test payload sizes justify it (S)
 
 ### Milestone 3: Look and feel
@@ -133,3 +132,5 @@ Must be finished before any feature that serves file contents.
 - 2026-10-05: Phases 3 to 7 complete. mDNS advertising and discovery, auto-reconnect, Lucide icons.
 - 2026-10-05: Post-MVP roadmap reordered into milestones.
 - 2026-10-05: Milestone 1 batch: config in the OS config folder, `-version`, `-pair`, `-rotate-token`, auth rate-limiting, sensitive-name ignores, API compatibility check, tests and CI, release pipeline. Relicensed to AGPL-3.0-or-later.
+- 2026-10-07: Milestone 1 complete apart from the macOS test: CI green on all systems, `v0.1.0-rc1` published with the APK.
+- 2026-10-07: Milestone 2, batch A: OS-aware default folders and ignores, hidden files skipped by default (`include_hidden`), `allowed_networks` for VPN use.

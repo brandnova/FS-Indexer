@@ -29,7 +29,7 @@ func NewServer(cfg *Config, ix *Indexer) *http.Server {
 
 	return &http.Server{
 		Addr:              ":" + strconv.Itoa(cfg.Port),
-		Handler:           lanOnly(auth(cfg.Token, lim, mux)),
+		Handler:           lanOnly(auth(cfg.Token, lim, mux), cfg.allowedNets...),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       60 * time.Second,
 		// No WriteTimeout on purpose: /index streams and can take a while.
@@ -96,18 +96,32 @@ func reindexHandler(ix *Indexer) http.HandlerFunc {
 // ---------- middleware ----------
 
 // lanOnly rejects any request that doesn't come from a private, loopback or
-// link-local address. It's a cheap safety net in case the port is ever
+// link-local address, or from one of the extra networks the user allowed
+// (e.g. a VPN range). It's a cheap safety net in case the port is ever
 // exposed to the internet, not a replacement for a firewall.
-func lanOnly(next http.Handler) http.Handler {
+func lanOnly(next http.Handler, extra ...*net.IPNet) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host, _, err := net.SplitHostPort(r.RemoteAddr)
 		ip := net.ParseIP(host)
-		if err != nil || ip == nil || !(ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast()) {
+		if err != nil || ip == nil || !(isLocalAddress(ip) || inAnyNetwork(ip, extra)) {
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func isLocalAddress(ip net.IP) bool {
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast()
+}
+
+func inAnyNetwork(ip net.IP, nets []*net.IPNet) bool {
+	for _, n := range nets {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 // auth checks the bearer token and locks out clients that keep guessing.

@@ -95,7 +95,9 @@ Traffic is plain HTTP on your local network, protected by a shared token, and th
 
 ## Agent Configuration
 
-`config.json` is created automatically on first run. Edit it to choose your folders:
+The agent keeps `config.json` in your OS config folder (`~/.config/fs-indexer/` on Linux, `%AppData%\fs-indexer\` on Windows, `~/Library/Application Support/fs-indexer/` on macOS). It's created on first run, and `-config <path>` overrides the location.
+
+With no `roots` configured, the agent indexes your standard folders that exist (Documents, Downloads, Desktop, Pictures, Music, and Videos or Movies), using the locations your OS reports, and writes them into the file so you can edit them.
 
 ```json
 {
@@ -107,11 +109,18 @@ Traffic is plain HTTP on your local network, protected by a shared token, and th
     { "path": "~/Documents", "label": "Documents" },
     { "path": "D:/Projects" }
   ],
-  "extra_ignores": ["*.tmp", "dist"]
+  "extra_ignores": ["*.tmp", "dist"],
+  "include_hidden": false,
+  "allowed_networks": []
 }
 ```
 
-`label` is optional and defaults to the folder name. Use forward slashes on Windows.
+| Setting | Meaning |
+| --- | --- |
+| `roots` | Folders to index. `label` is optional and defaults to the folder name. Use forward slashes on Windows (`D:/Projects`) |
+| `extra_ignores` | Extra file or folder names (wildcards allowed) to skip |
+| `include_hidden` | `false` (default) skips names starting with `.`; set `true` to include them |
+| `allowed_networks` | Extra networks allowed to connect, in CIDR notation, e.g. `["100.64.0.0/10"]` for Tailscale. Very broad ranges are rejected |
 
 ## Build Phases
 
