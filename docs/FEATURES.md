@@ -65,6 +65,8 @@ Goal: anyone can download, install and trust a first public version.
 - [ ] Test the agent on Windows (a friend) and macOS (method to be decided) including first-run firewall prompts (M) (new)
 - [x] Release pipeline: GoReleaser + GitHub Actions publish agent binaries with checksums on every version tag (M)
 - [x] Attach the Android APK to each GitHub Release (S)
+- [x] Windows code review and CI on a Windows runner (build and unit tests) (new)
+- [ ] Real-machine tests: Windows (agent starts and shows the QR on a real PC; detailed checks pending), macOS (tester requested) (M) (new)
 
 ### Milestone 2: Quick wins
 Small features that fit the project's core job of finding your files from your phone.
