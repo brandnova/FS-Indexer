@@ -16,6 +16,15 @@ export interface SyncResult {
   ms: number;
 }
 
+/** Thrown when the user cancels an update. */
+export class SyncCancelled extends Error {
+  constructor() {
+    super('Update cancelled');
+    Object.setPrototypeOf(this, SyncCancelled.prototype);
+    this.name = 'SyncCancelled';
+  }
+}
+
 const ROWS_PER_STATEMENT = 90; // 10 params per row = 900, under SQLite's classic 999 limit
 const ROWS_PER_TRANSACTION = 1000;
 const READ_STALL_MS = 15_000; // give up if the PC stops sending data for this long
@@ -58,15 +67,19 @@ export async function autoSyncPlan(remote: PingResponse): Promise<AutoSyncPlan> 
 
 export async function syncFromPc(
   pairing: PairingInfo,
-  opts: { rescan?: boolean; onProgress?: (p: SyncProgress) => void } = {},
+  opts: { rescan?: boolean; onProgress?: (p: SyncProgress) => void; signal?: AbortSignal } = {},
 ): Promise<SyncResult> {
-  const { rescan = false, onProgress } = opts;
+  const { rescan = false, onProgress, signal } = opts;
   const started = Date.now();
+  const stopIfCancelled = () => {
+    if (signal?.aborted) throw new SyncCancelled();
+  };
 
   if (rescan) {
     onProgress?.({ phase: 'rescanning', received: 0, total: null });
-    await rescanRemote(pairing);
+    await rescanRemote(pairing, signal);
   }
+  stopIfCancelled();
 
   // Which PC scan are we about to copy? Saved after success (see autoSyncPlan).
   const remoteInfo = await ping(pairing);
@@ -78,7 +91,8 @@ export async function syncFromPc(
   const syncId = Number((await getMeta('sync_id')) ?? '0') + 1;
   await setMeta('sync_id', String(syncId));
 
-  const total = await downloadIndex(pairing, db, syncId, onProgress);
+  const total = await downloadIndex(pairing, db, syncId, onProgress, signal);
+  stopIfCancelled();
 
   // Only reached after a complete download: anything not touched by this
   // sync no longer exists on the PC.
@@ -97,6 +111,7 @@ async function downloadIndex(
   db: SQLiteDatabase,
   syncId: number,
   onProgress?: (p: SyncProgress) => void,
+  signal?: AbortSignal,
 ): Promise<number> {
   // The phone's networking layer asks for gzip and decompresses it for us.
   const res = await apiRequest(c, '/index', { timeoutMs: 10_000 });
@@ -136,6 +151,7 @@ async function downloadIndex(
   try {
     while (true) {
       const { done, value } = await readWithTimeout(reader);
+      if (signal?.aborted) throw new SyncCancelled();
       if (done) break;
       if (!value || value.length === 0) continue;
 
@@ -194,7 +210,7 @@ async function insertBatch(db: SQLiteDatabase, entries: Entry[], syncId: number)
 
 // ---------- rescan ----------
 
-async function rescanRemote(c: Candidate): Promise<void> {
+async function rescanRemote(c: Candidate, signal?: AbortSignal): Promise<void> {
   // 409 means a scan is already running, which is fine: we just wait for it.
   await apiRequest(c, '/reindex', { method: 'POST', allow: [409] });
 
@@ -203,6 +219,7 @@ async function rescanRemote(c: Candidate): Promise<void> {
   const deadline = Date.now() + 10 * 60 * 1000;
   while (Date.now() < deadline) {
     await sleep(500);
+    if (signal?.aborted) throw new SyncCancelled();
     if (!(await ping(c)).scanning) return;
   }
   throw new ApiError('timeout', 'The PC is taking too long to rescan.');

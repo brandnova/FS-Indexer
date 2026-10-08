@@ -1,20 +1,24 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { ChevronRight, Monitor, QrCode, X } from 'lucide-react-native';
+import { ChevronRight, Folder, Monitor, QrCode, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { ApiError, toApiError } from '../api/client';
 import { startDiscovery, type DiscoveredDevice } from '../discovery';
 import { pairWith, parseAddress, parseQrPayload } from '../pairing';
 import { platform } from '../platform';
 import type { Candidate, PairingInfo } from '../types';
-import { Button, colors } from '../ui';
+import { Button, Card, Text, fonts, radius, useTheme, useThemedStyles, type Palette } from '../ui';
 
 interface Props {
   onPaired: (info: PairingInfo) => void;
 }
 
 export default function PairScreen({ onPaired }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+
   const [mode, setMode] = useState<'form' | 'scan'>('form');
+  const [showManual, setShowManual] = useState(false);
   const [address, setAddress] = useState('');
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
@@ -53,14 +57,14 @@ export default function PairScreen({ onPaired }: Props) {
       setError('Enter the token shown by the agent.');
       return;
     }
-    connect({ ...addr, token: token.trim() });
+    void connect({ ...addr, token: token.trim() });
   }
 
   function handleScan(data: string) {
     setMode('form');
     const candidate = parseQrPayload(data);
     if (!candidate) {
-      setError('That QR code is not a pairing code from the FS agent.');
+      setError("That QR code isn't a pairing code from the agent.");
       return;
     }
     if (expected && candidate.id && candidate.id !== expected.id) {
@@ -68,13 +72,13 @@ export default function PairScreen({ onPaired }: Props) {
       return;
     }
     setExpected(null);
-    connect(candidate);
+    void connect(candidate);
   }
 
   if (mode === 'scan') {
     return (
       <Scanner
-        hint={expected ? `Scan the QR code shown by ${expected.name}` : "Point the camera at the QR code in your PC's terminal"}
+        hint={expected ? `Scan the QR code shown by ${expected.name}` : "Point the camera at the QR code on your PC's screen"}
         onResult={handleScan}
         onCancel={() => {
           setExpected(null);
@@ -88,30 +92,40 @@ export default function PairScreen({ onPaired }: Props) {
   const showHelp = error instanceof ApiError && error.isConnectivity;
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Pair with your PC</Text>
-      <Text style={styles.subtitle}>
-        Start the agent on your PC, then scan the QR code it prints, or enter the details by hand.
-      </Text>
+    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <View style={styles.brand}>
+        <Folder size={34} color={colors.folder} />
+      </View>
+
+      <View style={styles.titles}>
+        <Text variant="display">Connect to your PC</Text>
+        <Text tone="muted">
+          Start the agent on your computer. It shows a QR code: scan it here and your files are one tap away.
+        </Text>
+      </View>
 
       <Button
         title="Scan QR code"
         icon={QrCode}
+        disabled={busy}
         onPress={() => {
           setError(null);
           setExpected(null);
           setMode('scan');
         }}
-        disabled={busy}
       />
 
       {discoverySupported ? (
         <View style={styles.nearby}>
-          <Text style={styles.sectionTitle}>Nearby PCs</Text>
+          <Text variant="label" tone="muted">
+            NEARBY PCS
+          </Text>
           {nearby.length === 0 ? (
             <View style={styles.inline}>
               <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={styles.muted}>Looking for PCs running the agent...</Text>
+              <Text variant="caption" tone="muted">
+                Looking for PCs running the agent...
+              </Text>
             </View>
           ) : (
             nearby.map((d) => (
@@ -125,10 +139,14 @@ export default function PairScreen({ onPaired }: Props) {
                   setMode('scan');
                 }}
               >
-                <Monitor size={22} color={colors.primary} />
-                <View style={styles.nearbyText}>
-                  <Text style={styles.nearbyName}>{d.name}</Text>
-                  <Text style={styles.muted}>Tap, then scan the QR code it shows</Text>
+                <View style={styles.nearbyIcon}>
+                  <Monitor size={20} color={colors.primary} />
+                </View>
+                <View style={styles.flex}>
+                  <Text variant="bodyStrong">{d.name}</Text>
+                  <Text variant="caption" tone="muted">
+                    Tap, then scan the QR code it shows
+                  </Text>
                 </View>
                 <ChevronRight size={18} color={colors.muted} />
               </Pressable>
@@ -137,46 +155,58 @@ export default function PairScreen({ onPaired }: Props) {
         </View>
       ) : null}
 
-      <Text style={styles.divider}>or enter manually</Text>
-
-      <Text style={styles.label}>PC address</Text>
-      <TextInput
-        style={styles.input}
-        value={address}
-        onChangeText={setAddress}
-        placeholder="192.168.1.23:8080"
-        placeholderTextColor={colors.muted}
-        autoCapitalize="none"
-        autoCorrect={false}
-        editable={!busy}
+      <Button
+        title={showManual ? 'Hide manual entry' : 'Enter details manually'}
+        variant="ghost"
+        onPress={() => setShowManual((v) => !v)}
       />
 
-      <Text style={styles.label}>Token</Text>
-      <TextInput
-        style={styles.input}
-        value={token}
-        onChangeText={setToken}
-        placeholder="Token from the agent"
-        placeholderTextColor={colors.muted}
-        autoCapitalize="none"
-        autoCorrect={false}
-        editable={!busy}
-      />
+      {showManual ? (
+        <Card style={styles.manual}>
+          <Text variant="label" tone="muted">
+            PC ADDRESS
+          </Text>
+          <TextInput
+            style={styles.input}
+            value={address}
+            onChangeText={setAddress}
+            placeholder="192.168.1.23:8080"
+            placeholderTextColor={colors.muted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!busy}
+          />
+          <Text variant="label" tone="muted">
+            TOKEN
+          </Text>
+          <TextInput
+            style={styles.input}
+            value={token}
+            onChangeText={setToken}
+            placeholder="The token shown by the agent"
+            placeholderTextColor={colors.muted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!busy}
+          />
+          <Button title="Connect" loading={busy} onPress={submitManual} />
+        </Card>
+      ) : null}
 
-      {busy ? (
-        <ActivityIndicator style={styles.spinner} color={colors.primary} />
-      ) : (
-        <Button title="Connect" onPress={submitManual} />
-      )}
-
-      {errorText ? <Text style={styles.error}>{errorText}</Text> : null}
-
-      {showHelp ? (
-        <View style={styles.help}>
-          <Text style={styles.helpText}>{platform.connectionHelp}</Text>
-          <Button title="Open settings" variant="secondary" onPress={() => platform.openNetworkSettings()} />
+      {errorText ? (
+        <View style={styles.errorBox}>
+          <Text tone="danger">{errorText}</Text>
         </View>
       ) : null}
+
+      {showHelp ? (
+        <Card style={styles.manual}>
+          <Text>{platform.connectionHelp}</Text>
+          <Button title="Open network settings" variant="secondary" size="sm" onPress={() => void platform.openNetworkSettings()} />
+        </Card>
+      ) : null}
+
+      {busy && !showManual ? <ActivityIndicator color={colors.primary} /> : null}
     </ScrollView>
   );
 }
@@ -190,6 +220,8 @@ function Scanner({
   onResult: (data: string) => void;
   onCancel: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [permission, requestPermission] = useCameraPermissions();
   const handled = useRef(false); // the camera fires repeatedly; only react once
 
@@ -204,9 +236,14 @@ function Scanner({
   if (!permission.granted) {
     return (
       <View style={styles.center}>
-        <Text style={styles.subtitle}>Camera access is needed to scan the pairing QR code.</Text>
-        <View style={styles.gap}>
-          <Button title="Allow camera" onPress={() => requestPermission()} />
+        <Text variant="title" style={styles.centerText}>
+          Camera access needed
+        </Text>
+        <Text tone="muted" style={styles.centerText}>
+          The camera is only used to scan the pairing QR code. Nothing is saved or sent anywhere.
+        </Text>
+        <View style={styles.centerButtons}>
+          <Button title="Allow camera" onPress={() => void requestPermission()} />
           <Button title="Cancel" variant="secondary" icon={X} onPress={onCancel} />
         </View>
       </View>
@@ -226,53 +263,59 @@ function Scanner({
         }}
       />
       <View style={styles.scanFooter}>
-        <Text style={styles.scanHint}>{hint}</Text>
+        <Text variant="bodyStrong" style={styles.scanHint}>
+          {hint}
+        </Text>
         <Button title="Cancel" variant="secondary" icon={X} onPress={onCancel} />
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { padding: 24, gap: 8 },
-  center: { flex: 1, padding: 24, justifyContent: 'center', gap: 16 },
-  gap: { gap: 12 },
-  title: { fontSize: 26, fontWeight: '700', color: colors.text, marginTop: 8 },
-  subtitle: { fontSize: 15, color: colors.muted, marginBottom: 16 },
-  muted: { fontSize: 13, color: colors.muted },
-  inline: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  nearby: { marginTop: 16, gap: 10 },
-  sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.text },
-  nearbyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 14,
-    borderRadius: 10,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  nearbyText: { flex: 1 },
-  nearbyName: { fontSize: 16, fontWeight: '600', color: colors.text },
-  divider: { textAlign: 'center', color: colors.muted, marginVertical: 16 },
-  label: { fontSize: 13, fontWeight: '600', color: colors.text, marginTop: 8 },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: colors.text,
-    marginBottom: 8,
-  },
-  spinner: { marginVertical: 14 },
-  error: { color: colors.danger, marginTop: 12, fontSize: 14 },
-  help: { marginTop: 12, gap: 12, padding: 14, borderRadius: 10, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
-  helpText: { color: colors.muted, fontSize: 14, lineHeight: 20 },
-  scanner: { flex: 1, backgroundColor: '#000' },
-  scanFooter: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 24, gap: 12, backgroundColor: 'rgba(0,0,0,0.55)' },
-  scanHint: { color: '#fff', textAlign: 'center', fontSize: 15 },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    content: { padding: 24, paddingBottom: 40, gap: 18 },
+    flex: { flex: 1 },
+    brand: {
+      width: 72,
+      height: 72,
+      borderRadius: 22,
+      backgroundColor: c.navy,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 12,
+    },
+    titles: { gap: 8 },
+    nearby: { gap: 10 },
+    inline: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    nearbyRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      padding: 12,
+      borderRadius: radius.lg,
+      backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    nearbyIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySoft },
+    manual: { gap: 10 },
+    input: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.bg,
+      borderRadius: radius.md,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 15,
+      fontFamily: fonts.regular,
+      color: c.text,
+    },
+    errorBox: { padding: 14, borderRadius: radius.md, backgroundColor: c.dangerSoft },
+    center: { flex: 1, padding: 24, justifyContent: 'center', gap: 14 },
+    centerText: { textAlign: 'center' },
+    centerButtons: { gap: 10, marginTop: 8 },
+    scanner: { flex: 1, backgroundColor: '#000' },
+    scanFooter: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 24, gap: 14, backgroundColor: 'rgba(0,0,0,0.6)' },
+    scanHint: { color: '#FFFFFF', textAlign: 'center' },
+  });

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Keyboard } from 'react-native';
 
 /** Returns `value`, but only after it has stopped changing for `delayMs`. */
 export function useDebounced<T>(value: T, delayMs: number): T {
@@ -34,4 +35,20 @@ export function useToast(durationMs = 1800): [string | null, (message: string) =
   );
 
   return [message, show];
+}
+
+/** True while the on-screen keyboard is open. */
+export function useKeyboardVisible(): boolean {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setVisible(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setVisible(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  return visible;
 }

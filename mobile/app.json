@@ -59,7 +59,8 @@
         {
           "cameraPermission": "Allow $(PRODUCT_NAME) to scan the pairing QR code shown by your PC."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {

@@ -85,9 +85,17 @@ Small features that fit the project's core job of finding your files from your p
 - [x] Copy the full PC path of a file (the agent shares each root's location) (S) (new)
 
 ### Milestone 3: Look and feel
-- [ ] General UI/UX optimization for the mobile client (visual design pass, typography and spacing, loading/empty/error states, dark mode, animations, accessibility) (L)
+- [x] Design system: soft solid palette taken from the app icon, Nunito typeface, spacing and type scale (new)
+- [x] Bottom navigation (Home, Files, Recent, Pinned, Settings) that keeps each tab's place; Android back button steps out of searches and folders first (new)
+- [x] Home dashboard: one clear update card, search, folder tiles, recent files (new)
+- [x] Secondary actions live in bottom sheets and menus (filters, file details, folder options) instead of taking screen space (new)
+- [x] Settings screen with connection, update options, help, about and Unpair (new)
+- [x] Dark mode (Settings, Appearance) (new)
+- [x] Cancel button and a time-left estimate for long updates (new)
+- [ ] Loading skeletons, small animations and an accessibility pass (M)
+- [ ] First-run walkthrough (S) (new)
 - [ ] General UI/UX optimization for the agent (clearer terminal output and startup banner, friendlier errors, config helpers) (M)
-- [ ] Demo mode with a bundled sample index, so people (and store reviewers) can try the app without an agent (M) (new)
+- [ ] Demo mode with a bundled sample index (M) (new)
 
 ### Milestone 4: Agent management
 - [ ] Local web UI served by the agent (loopback only): status, roots, pairing QR page, rescan (L)
@@ -140,3 +148,4 @@ Must be finished before any feature that serves file contents.
 - 2026-10-07: Milestone 2, batch B: Browse tabs (Browse, Recent, Pinned), copy path/name, pinned folders, auto-sync on open, per-folder summary on Home, file-type icons. Fixed the breadcrumbs being cropped on long lists.
 - 2026-10-08: Milestone 2 complete: filters, sort and search scope (names or names and folders) in the app; gzip for `/index`; database schema version 3.
 - 2026-10-08: Milestone 2 complete: `GET /roots`, full PC paths in a new file details sheet, "Copy PC path" for files and folders. Scale test: 316k entries index in 21 s, about 168 MB; gzip makes the 64.5 MB index 4.6 MB.
+- 2026-10-08: Milestone 3, batch A: new design system, navigation and screens; dark mode; cancellable updates with a time estimate; `scripts/cross-build.sh`.

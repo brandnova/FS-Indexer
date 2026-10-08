@@ -1,317 +1,265 @@
-import { ChevronRight, Download, Folder, RefreshCw, Settings, Unlink, Wifi, WifiOff } from 'lucide-react-native';
-import type { ReactNode } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
-import { ApiError, ping, toApiError } from '../api/client';
-import { countEntries, getMeta } from '../db';
-import { rootStats, type RootStat } from '../db/queries';
-import { formatDateTime, formatSize } from '../format';
-import { relocate, unpair } from '../pairing';
+import { Check, ChevronRight, Folder, RefreshCw, Search, WifiOff, type LucideIcon } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useActions } from '../actions';
+import { FileListRow, subtitleFor } from '../components/FileRow';
+import { listRecent, type FileRow } from '../db/queries';
+import { formatRelative, formatSize } from '../format';
 import { platform } from '../platform';
-import { getAutoSync, setAutoSync } from '../settings';
-import { autoSyncPlan, syncFromPc, type SyncProgress } from '../sync';
-import type { PairingInfo, PingResponse } from '../types';
-import { Button, colors } from '../ui';
+import { useSession } from '../session';
+import type { SyncProgress } from '../sync';
+import { Button, Card, ProgressBar, StatusChip, Text, radius, useTheme, useThemedStyles, type Palette } from '../ui';
 
 interface Props {
-  pairing: PairingInfo;
-  onBrowse: (startPath?: string) => void;
-  onUnpaired: () => void;
-  onRelocated: (pairing: PairingInfo) => void;
+  onSearch: () => void;
+  onOpenFolder: (path: string) => void;
+  onSeeAllRecent: () => void;
 }
 
-function progressLabel(p: SyncProgress): string {
+const SCREEN_PAD = 20;
+const GAP = 12;
+
+function progressText(p: SyncProgress | null): string {
+  if (!p) return 'Getting ready...';
   switch (p.phase) {
     case 'rescanning':
-      return 'Rescanning folders on the PC...';
+      return 'Looking for changes on your PC...';
     case 'downloading':
-      return p.total
-        ? `Downloading ${p.received.toLocaleString()} / ${p.total.toLocaleString()}`
-        : `Downloading ${p.received.toLocaleString()}`;
+      return p.total ? `Copying your file list... ${Math.min(100, Math.round((p.received / p.total) * 100))}%` : 'Copying your file list...';
     case 'cleaning':
-      return 'Removing deleted files...';
+      return 'Finishing up...';
   }
 }
 
-export default function HomeScreen({ pairing, onBrowse, onUnpaired, onRelocated }: Props) {
-  const [checking, setChecking] = useState(true);
-  const [note, setNote] = useState<string | null>(null);
-  const [remote, setRemote] = useState<PingResponse | null>(null);
-  const [error, setError] = useState<ApiError | null>(null);
-  const [localCount, setLocalCount] = useState<number | null>(null);
-  const [lastSynced, setLastSynced] = useState<string | null>(null);
-  const [stats, setStats] = useState<RootStat[]>([]);
-  const [autoSyncOn, setAutoSyncOn] = useState(true);
+export default function HomeScreen({ onSearch, onOpenFolder, onSeeAllRecent }: Props) {
+  const s = useSession();
+  const { showDetails } = useActions();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { width } = useWindowDimensions();
 
-  const [syncing, setSyncing] = useState(false);
-  const syncingRef = useRef(false);
-  const [progress, setProgress] = useState<SyncProgress | null>(null);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
-  const [syncError, setSyncError] = useState<string | null>(null);
+  const [recent, setRecent] = useState<FileRow[]>([]);
+  const [helpOpen, setHelpOpen] = useState(false);
 
-  const loadLocal = useCallback(async () => {
-    setLocalCount(await countEntries());
-    setLastSynced(await getMeta('last_synced_at'));
-    setStats(await rootStats());
-    setAutoSyncOn(await getAutoSync());
-  }, []);
-
-  /** Pings the PC (finding it again if its address changed). Returns the answer, or null if offline. */
-  const check = useCallback(async (): Promise<PingResponse | null> => {
-    setChecking(true);
-    setError(null);
-    let result: PingResponse | null = null;
-    try {
-      result = await ping(pairing);
-      setRemote(result);
-    } catch (e) {
-      const err = toApiError(e);
-
-      // Unreachable: the PC may have a new address. Try to find it by id.
-      if (err.isConnectivity) {
-        setNote('Looking for your PC on the network...');
-        const moved = await relocate(pairing).catch(() => null);
-        setNote(null);
-        if (moved && (moved.host !== pairing.host || moved.port !== pairing.port)) {
-          onRelocated(moved); // the new pairing prop re-runs this check
-          return null;
-        }
-      }
-
-      setRemote(null);
-      setError(err);
-    }
-    await loadLocal();
-    setChecking(false);
-    return result;
-  }, [pairing, loadLocal, onRelocated]);
-
-  // On opening: check the PC, then sync automatically if the phone's copy is out of date.
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      const result = await check();
-      if (cancelled || !result || syncingRef.current) return;
-      const plan = await autoSyncPlan(result);
-      if (!cancelled && plan.run) await runSync(plan.rescan, true);
-    })();
+    listRecent({}, 5).then((rows) => {
+      if (!cancelled) setRecent(rows);
+    });
     return () => {
       cancelled = true;
     };
-  }, [check]);
+  }, [s.dataVersion]);
 
-  async function runSync(rescan: boolean, auto = false) {
-    syncingRef.current = true;
-    setSyncing(true);
-    setSyncError(null);
-    setSyncMessage(null);
-    setProgress(null);
-    try {
-      const r = await syncFromPc(pairing, { rescan, onProgress: setProgress });
-      const removed = r.removed > 0 ? `, removed ${r.removed.toLocaleString()} deleted` : '';
-      setSyncMessage(
-        `${auto ? 'Auto-synced' : 'Synced'} ${r.total.toLocaleString()} entries in ${(r.ms / 1000).toFixed(1)}s${removed}`,
-      );
-    } catch (e) {
-      setSyncError(e instanceof ApiError ? e.message : `Sync failed: ${String(e)}`);
-    }
-    setProgress(null);
-    setSyncing(false);
-    syncingRef.current = false;
-    await check();
+  const online = s.remote !== null;
+  const offline = !online && !s.checking;
+  const tileWidth = Math.floor((width - SCREEN_PAD * 2 - GAP) / 2);
+  const downloadPct =
+    s.progress?.phase === 'downloading' && s.progress.total
+      ? Math.min(100, Math.round((s.progress.received / s.progress.total) * 100))
+      : null;
+
+  // What the update card says, depending on the situation.
+  let Icon: LucideIcon = RefreshCw;
+  let badgeBg = colors.primarySoft;
+  let badgeFg = colors.primary;
+  let title = '';
+  let caption = '';
+  let captionTone: 'muted' | 'danger' = 'muted';
+
+  if (s.syncing) {
+    title = 'Updating...';
+    caption = progressText(s.progress) + (s.eta ? ` · ${s.eta}` : '');
+  } else if (s.syncError) {
+    badgeBg = colors.dangerSoft;
+    badgeFg = colors.danger;
+    title = "The update didn't finish";
+    caption = s.syncError;
+    captionTone = 'danger';
+  } else if (offline) {
+    Icon = WifiOff;
+    badgeBg = colors.dangerSoft;
+    badgeFg = colors.danger;
+    title = "Can't reach your PC";
+    caption = s.error?.message ?? 'Make sure your PC is on and the agent is running.';
+    captionTone = 'danger';
+  } else if (s.lastSynced === null) {
+    title = 'Get started';
+    caption = "Copy your PC's file list to this phone so you can search it anywhere.";
+  } else if (s.pcHasNewer) {
+    title = 'Your PC has newer files';
+    caption = `Last updated ${formatRelative(s.lastSynced)}`;
+  } else {
+    Icon = Check;
+    badgeBg = colors.successSoft;
+    badgeFg = colors.success;
+    title = 'Up to date';
+    caption = `Updated ${formatRelative(s.lastSynced)}`;
   }
+  if (!s.syncing && !s.syncError && s.syncMessage) caption = s.syncMessage;
 
-  async function toggleAutoSync(value: boolean) {
-    setAutoSyncOn(value);
-    await setAutoSync(value);
-  }
-
-  function confirmUnpair() {
-    Alert.alert('Unpair this PC?', 'The saved token, the local file index and your pinned folders will be deleted from this phone.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Unpair',
-        style: 'destructive',
-        onPress: async () => {
-          await unpair();
-          onUnpaired();
-        },
-      },
-    ]);
-  }
-
-  const online = remote !== null;
-  const busy = checking || syncing;
-  const pct =
-    progress?.total && progress.phase !== 'rescanning'
-      ? Math.min(100, Math.round((progress.received / progress.total) * 100))
-      : 0;
+  const needsUpdate = s.lastSynced === null || s.pcHasNewer;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>{pairing.name}</Text>
-      <Text style={styles.subtitle}>
-        {pairing.host}:{pairing.port}
-      </Text>
-
-      <View style={styles.card}>
-        <Row label="Status">
-          {checking ? (
-            <ActivityIndicator color={colors.primary} />
-          ) : online ? (
-            <View style={styles.inline}>
-              <Wifi size={16} color={colors.ok} />
-              <Text style={{ color: colors.ok, fontWeight: '600' }}>Online</Text>
-            </View>
-          ) : (
-            <View style={styles.inline}>
-              <WifiOff size={16} color={colors.danger} />
-              <Text style={{ color: colors.danger, fontWeight: '600' }}>Offline</Text>
-            </View>
-          )}
-        </Row>
-        {note ? <Text style={styles.help}>{note}</Text> : null}
-        {remote ? (
-          <>
-            <Row label="Entries on PC">
-              <Text style={styles.value}>{remote.file_count.toLocaleString()}</Text>
-            </Row>
-            <Row label="PC last scanned">
-              <Text style={styles.value}>{remote.indexed_at ? formatDateTime(remote.indexed_at) : 'not yet'}</Text>
-            </Row>
-          </>
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.header}>
+        <Text variant="display" numberOfLines={1}>
+          {s.pairing.name}
+        </Text>
+        <StatusChip
+          kind={s.checking ? 'idle' : online ? 'ok' : 'bad'}
+          label={s.checking ? 'Checking...' : online ? 'Connected' : 'Not connected'}
+        />
+        {s.note ? (
+          <Text variant="caption" tone="muted">
+            {s.note}
+          </Text>
         ) : null}
-        <Row label="Entries on phone">
-          <Text style={styles.value}>{localCount === null ? '...' : localCount.toLocaleString()}</Text>
-        </Row>
-        <Row label="Last synced">
-          <Text style={styles.value}>{lastSynced ? formatDateTime(Number(lastSynced)) : 'never'}</Text>
-        </Row>
       </View>
 
-      <Button title="Browse files" icon={Folder} onPress={() => onBrowse()} disabled={!localCount} />
-
-      {stats.length > 0 ? (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Folders on this PC</Text>
-          {stats.map((s) => (
-            <Pressable key={s.root} style={styles.statRow} onPress={() => onBrowse(s.root)}>
-              <Folder size={20} color={colors.primary} />
-              <View style={styles.statText}>
-                <Text style={styles.value}>{s.root}</Text>
-                <Text style={styles.help}>
-                  {s.files.toLocaleString()} files · {formatSize(s.bytes)}
-                </Text>
-              </View>
-              <ChevronRight size={18} color={colors.muted} />
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-
-      {error ? (
-        <View style={styles.card}>
-          <Text style={styles.error}>{error.message}</Text>
-          {error.isConnectivity ? (
-            <>
-              <Text style={styles.help}>{platform.connectionHelp}</Text>
-              <Button
-                title="Open settings"
-                variant="secondary"
-                icon={Settings}
-                onPress={() => platform.openNetworkSettings()}
-              />
-            </>
-          ) : null}
-        </View>
-      ) : null}
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Sync</Text>
-
-        <View style={styles.switchRow}>
-          <View style={styles.statText}>
-            <Text style={styles.value}>Sync when opening the app</Text>
-            <Text style={styles.help}>Only when the PC has newer data. A rescan is requested if your last sync is over 6 hours old.</Text>
+      <Card style={styles.updateCard}>
+        <View style={styles.updateHeader}>
+          <View style={[styles.badge, { backgroundColor: badgeBg }]}>
+            <Icon size={22} color={badgeFg} />
           </View>
-          <Switch
-            value={autoSyncOn}
-            onValueChange={toggleAutoSync}
-            trackColor={{ false: colors.border, true: colors.primary }}
-          />
+          <View style={styles.flex}>
+            <Text variant="heading">{title}</Text>
+            <Text variant="caption" tone={captionTone}>
+              {caption}
+            </Text>
+          </View>
         </View>
 
-        {syncing && progress ? (
-          <>
-            <Text style={styles.value}>{progressLabel(progress)}</Text>
-            <View style={styles.barTrack}>
-              <View style={[styles.barFill, { width: `${pct}%` as `${number}%` }]} />
+        {s.syncing && downloadPct !== null ? <ProgressBar value={downloadPct} /> : null}
+
+        {s.syncing ? (
+          <Button title="Cancel" variant="secondary" size="sm" onPress={s.cancelSync} />
+        ) : offline ? (
+          <View style={styles.buttonRow}>
+            <View style={styles.flex}>
+              <Button title="Try again" size="sm" loading={s.checking} onPress={() => void s.check()} />
             </View>
-          </>
-        ) : null}
-        {syncing && !progress ? <ActivityIndicator color={colors.primary} /> : null}
+            <View style={styles.flex}>
+              <Button title={helpOpen ? 'Hide help' : 'Help'} variant="tonal" size="sm" onPress={() => setHelpOpen((v) => !v)} />
+            </View>
+          </View>
+        ) : (
+          <Button
+            title={s.lastSynced === null ? 'Update now' : 'Update'}
+            variant={needsUpdate ? 'primary' : 'tonal'}
+            icon={RefreshCw}
+            disabled={!online}
+            onPress={() => void s.runSync({ rescan: true })}
+          />
+        )}
+      </Card>
 
-        {syncMessage ? <Text style={styles.ok}>{syncMessage}</Text> : null}
-        {syncError ? <Text style={styles.error}>{syncError}</Text> : null}
+      {offline && helpOpen ? (
+        <Card style={styles.helpCard}>
+          <Text variant="body">{platform.connectionHelp}</Text>
+          <Button
+            title="Open network settings"
+            variant="secondary"
+            size="sm"
+            onPress={() => void platform.openNetworkSettings()}
+          />
+        </Card>
+      ) : null}
 
-        <Button
-          title="Sync now"
-          variant="secondary"
-          icon={Download}
-          onPress={() => runSync(false)}
-          disabled={busy || !online}
-        />
-        <Button
-          title="Rescan PC & sync"
-          variant="secondary"
-          icon={RefreshCw}
-          onPress={() => runSync(true)}
-          disabled={busy || !online}
-        />
-      </View>
+      <Pressable style={styles.searchPill} onPress={onSearch} accessibilityRole="search" accessibilityLabel="Search your files">
+        <Search size={20} color={colors.muted} />
+        <Text tone="muted">Search your files</Text>
+      </Pressable>
 
-      <View style={styles.actions}>
-        <Button
-          title="Re-check connection"
-          variant="secondary"
-          icon={Wifi}
-          onPress={() => {
-            void check();
-          }}
-          disabled={busy}
-        />
-        <Button title="Unpair" variant="danger" icon={Unlink} onPress={confirmUnpair} disabled={syncing} />
-      </View>
+      {s.stats.length > 0 ? (
+        <View style={styles.section}>
+          <Text variant="heading">Your folders</Text>
+          <View style={styles.tiles}>
+            {s.stats.map((stat) => (
+              <Pressable
+                key={stat.root}
+                style={[styles.tile, { width: tileWidth }]}
+                onPress={() => onOpenFolder(stat.root)}
+                accessibilityLabel={`Open ${stat.root}`}
+              >
+                <View style={styles.tileIcon}>
+                  <Folder size={24} color={colors.folder} />
+                </View>
+                <Text variant="bodyStrong" numberOfLines={1}>
+                  {stat.root}
+                </Text>
+                <Text variant="caption" tone="muted" numberOfLines={1}>
+                  {stat.files.toLocaleString()} files · {formatSize(stat.bytes)}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      {recent.length > 0 ? (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text variant="heading">Recent files</Text>
+            <Pressable onPress={onSeeAllRecent} hitSlop={10} style={styles.seeAll}>
+              <Text variant="label" tone="primary">
+                See all
+              </Text>
+              <ChevronRight size={16} color={colors.primary} />
+            </Pressable>
+          </View>
+          <Card style={styles.listCard}>
+            {recent.map((row) => (
+              <FileListRow key={row.path} item={row} {...subtitleFor(row, 'recent')} onPress={showDetails} />
+            ))}
+          </Card>
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      {children}
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { padding: 24, gap: 16 },
-  title: { fontSize: 26, fontWeight: '700', color: colors.text, marginTop: 8 },
-  subtitle: { fontSize: 15, color: colors.muted, marginTop: -8 },
-  card: { backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 16, gap: 12 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  inline: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  statRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4 },
-  statText: { flex: 1 },
-  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  rowLabel: { color: colors.muted, fontSize: 15 },
-  value: { color: colors.text, fontSize: 15, fontWeight: '500' },
-  ok: { color: colors.ok, fontSize: 15 },
-  error: { color: colors.danger, fontSize: 15 },
-  help: { color: colors.muted, fontSize: 14, lineHeight: 20 },
-  barTrack: { height: 8, borderRadius: 4, backgroundColor: colors.border, overflow: 'hidden' },
-  barFill: { height: 8, backgroundColor: colors.primary },
-  actions: { gap: 12 },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    content: { padding: SCREEN_PAD, paddingBottom: 32, gap: 16 },
+    flex: { flex: 1 },
+    header: { gap: 8, paddingTop: 4 },
+    updateCard: { gap: 14 },
+    updateHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    badge: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    buttonRow: { flexDirection: 'row', gap: 10 },
+    helpCard: { gap: 12 },
+    searchPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      height: 52,
+      paddingHorizontal: 16,
+      borderRadius: radius.lg,
+      backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    section: { gap: 10 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    seeAll: { flexDirection: 'row', alignItems: 'center' },
+    tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
+    tile: {
+      backgroundColor: c.surface,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: c.border,
+      padding: 14,
+      gap: 2,
+    },
+    tileIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      backgroundColor: c.folderSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 8,
+    },
+    listCard: { padding: 0, overflow: 'hidden' },
+  });
