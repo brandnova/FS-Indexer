@@ -25,6 +25,7 @@ FS Indexer does not collect your data. There are no accounts, no analytics, no a
 - It stores a copy of the file list (names, paths, sizes, dates) in a local database on the phone, so you can browse and search offline.
 - It uses the camera only to scan the pairing QR code. Images are not saved or sent anywhere.
 - It uses local-network access only to talk to your own PC.
+- It stores your pinned folders and app settings on the phone. Copying a file's path puts that text on your clipboard only when you tap Copy.
 
 ## What we collect and share
 

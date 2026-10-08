@@ -1,7 +1,8 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { ApiError, apiRequest, ping } from './api/client';
 import { getDb, getMeta, setMeta } from './db';
-import type { Candidate, Entry, PairingInfo } from './types';
+import { getAutoSync } from './settings';
+import type { Candidate, Entry, PairingInfo, PingResponse } from './types';
 
 export interface SyncProgress {
   phase: 'rescanning' | 'downloading' | 'cleaning';
@@ -21,6 +22,40 @@ const READ_STALL_MS = 15_000; // give up if the PC stops sending data for this l
 const COLUMNS = '(path, parent, name, name_lc, ext, size, mtime, is_dir, sync_id)';
 const ROW_PLACEHOLDER = '(?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
+// ---------- automatic sync ----------
+
+const AUTO_SYNC_MAX_AGE_S = 6 * 60 * 60; // a copy older than this triggers a rescan on the PC
+
+export interface AutoSyncPlan {
+  run: boolean;
+  rescan: boolean;
+}
+
+/**
+ * Decides whether opening the app should sync. It syncs when this phone has
+ * never synced, when the PC has scanned again since the last sync, or when the
+ * last sync is old (then it asks the PC to rescan first). The PC's own scan
+ * timestamp is compared with the one we stored, so differences between the
+ * phone's and the PC's clocks don't matter.
+ */
+export async function autoSyncPlan(remote: PingResponse): Promise<AutoSyncPlan> {
+  const skip = { run: false, rescan: false };
+  if (!(await getAutoSync())) return skip;
+  if (remote.scanning || remote.indexed_at === 0) return skip; // the PC isn't ready yet
+
+  const stamp = await getMeta('synced_pc_indexed_at');
+  const lastSynced = Number((await getMeta('last_synced_at')) ?? '0');
+  const ageSeconds = Math.floor(Date.now() / 1000) - lastSynced;
+
+  const neverSynced = stamp === null;
+  const pcChanged = !neverSynced && stamp !== String(remote.indexed_at);
+  const tooOld = !neverSynced && ageSeconds > AUTO_SYNC_MAX_AGE_S;
+
+  return { run: neverSynced || pcChanged || tooOld, rescan: tooOld && !pcChanged };
+}
+
+// ---------- sync ----------
+
 export async function syncFromPc(
   pairing: PairingInfo,
   opts: { rescan?: boolean; onProgress?: (p: SyncProgress) => void } = {},
@@ -32,6 +67,9 @@ export async function syncFromPc(
     onProgress?.({ phase: 'rescanning', received: 0, total: null });
     await rescanRemote(pairing);
   }
+
+  // Which PC scan are we about to copy? Saved after success (see autoSyncPlan).
+  const remoteInfo = await ping(pairing);
 
   const db = await getDb();
 
@@ -47,6 +85,7 @@ export async function syncFromPc(
   onProgress?.({ phase: 'cleaning', received: total, total });
   const res = await db.runAsync('DELETE FROM files WHERE sync_id != ?', syncId);
   await setMeta('last_synced_at', String(Math.floor(Date.now() / 1000)));
+  await setMeta('synced_pc_indexed_at', String(remoteInfo.indexed_at));
 
   return { total, removed: res.changes, ms: Date.now() - started };
 }

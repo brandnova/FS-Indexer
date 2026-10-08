@@ -1,7 +1,5 @@
 import * as SQLite from 'expo-sqlite';
 
-const SCHEMA_VERSION = 1;
-
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 /** Opens the database once and returns the shared handle. */
@@ -22,6 +20,7 @@ async function openAndMigrate(): Promise<SQLite.SQLiteDatabase> {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   const current = row?.user_version ?? 0;
 
+  // Version 1: the file index and a small key/value table.
   if (current < 1) {
     // WITHOUT ROWID: the path IS the primary key, so we don't store it twice.
     // No index on name_lc: substring LIKE '%x%' can't use one anyway.
@@ -45,7 +44,19 @@ async function openAndMigrate(): Promise<SQLite.SQLiteDatabase> {
         value TEXT NOT NULL
       );
 
-      PRAGMA user_version = ${SCHEMA_VERSION};
+      PRAGMA user_version = 1;
+    `);
+  }
+
+  // Version 2: pinned folders.
+  if (current < 2) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS pins (
+        path      TEXT PRIMARY KEY NOT NULL,
+        pinned_at INTEGER NOT NULL
+      );
+
+      PRAGMA user_version = 2;
     `);
   }
 
@@ -69,11 +80,15 @@ export async function countEntries(): Promise<number> {
   return row?.n ?? 0;
 }
 
-/** Wipes the synced index (used when unpairing or switching PCs). */
+/**
+ * Wipes everything that belongs to one PC (used when unpairing or switching PCs).
+ * Settings (keys starting with "setting:") belong to the app and are kept.
+ */
 export async function clearIndex(): Promise<void> {
   const db = await getDb();
   await db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM files');
-    await db.runAsync('DELETE FROM meta');
+    await db.runAsync('DELETE FROM pins');
+    await db.runAsync("DELETE FROM meta WHERE key NOT LIKE 'setting:%'");
   });
 }

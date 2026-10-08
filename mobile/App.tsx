@@ -10,10 +10,12 @@ import PairScreen from './src/screens/PairScreen';
 import type { PairingInfo } from './src/types';
 import { colors } from './src/ui';
 
+type Route = { name: 'home' } | { name: 'browse'; start: string };
+
 export default function App() {
   // undefined = still loading, null = not paired
   const [pairing, setPairing] = useState<PairingInfo | null | undefined>(undefined);
-  const [route, setRoute] = useState<'home' | 'browse'>('home');
+  const [route, setRoute] = useState<Route>({ name: 'home' });
 
   useEffect(() => {
     loadPairing()
@@ -31,16 +33,18 @@ export default function App() {
     );
   } else if (pairing === null) {
     content = <PairScreen onPaired={setPairing} />;
-  } else if (route === 'browse') {
-    content = <BrowseScreen pairing={pairing} onBack={() => setRoute('home')} />;
+  } else if (route.name === 'browse') {
+    content = (
+      <BrowseScreen pairing={pairing} initialPath={route.start} onBack={() => setRoute({ name: 'home' })} />
+    );
   } else {
     content = (
       <HomeScreen
         pairing={pairing}
-        onBrowse={() => setRoute('browse')}
+        onBrowse={(start) => setRoute({ name: 'browse', start: start ?? '' })}
         onRelocated={setPairing}
         onUnpaired={() => {
-          setRoute('home');
+          setRoute({ name: 'home' });
           setPairing(null);
         }}
       />

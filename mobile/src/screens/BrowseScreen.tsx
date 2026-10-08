@@ -1,4 +1,14 @@
-import { ChevronLeft, ChevronRight, File as FileIcon, Folder as FolderIcon, Search, X } from 'lucide-react-native';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Folder as FolderIcon,
+  Pin,
+  PinOff,
+  Search,
+  X,
+  type LucideIcon,
+} from 'lucide-react-native';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,17 +22,39 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SEARCH_LIMIT, listFolder, searchFiles, tokenize, type FileRow } from '../db/queries';
+import { copyText } from '../clipboard';
 import { getMeta } from '../db';
+import {
+  SEARCH_LIMIT,
+  isPinned,
+  listFolder,
+  listPinned,
+  listRecent,
+  searchFiles,
+  setPinned,
+  tokenize,
+  type FileRow,
+} from '../db/queries';
+import { iconFor } from '../fileTypes';
 import { formatDate, formatDateTime, formatSize } from '../format';
-import { useDebounced } from '../hooks';
+import { useDebounced, useToast } from '../hooks';
 import type { PairingInfo } from '../types';
 import { colors } from '../ui';
 
 interface Props {
   pairing: PairingInfo;
+  initialPath?: string;
   onBack: () => void;
 }
+
+type Tab = 'browse' | 'recent' | 'pinned';
+type Mode = Tab | 'search';
+
+const TABS: { key: Tab; label: string; Icon: LucideIcon }[] = [
+  { key: 'browse', label: 'Browse', Icon: FolderIcon },
+  { key: 'recent', label: 'Recent', Icon: Clock },
+  { key: 'pinned', label: 'Pinned', Icon: Pin },
+];
 
 const ROW_HEIGHT = 60;
 
@@ -31,25 +63,44 @@ function parentOf(path: string): string {
   return idx === -1 ? '' : path.slice(0, idx);
 }
 
-export default function BrowseScreen({ pairing, onBack }: Props) {
-  const [current, setCurrent] = useState(''); // '' = list of roots
+function subtitleFor(row: FileRow, mode: Mode): { text: string; head: boolean } {
+  switch (mode) {
+    case 'search':
+      return { text: row.parent, head: true };
+    case 'recent':
+      return { text: `${formatDate(row.mtime)} · ${row.parent}`, head: false };
+    case 'pinned':
+      return { text: row.path, head: true };
+    default:
+      return { text: row.isDir ? 'Folder' : `${formatSize(row.size)} · ${formatDate(row.mtime)}`, head: false };
+  }
+}
+
+export default function BrowseScreen({ pairing, initialPath = '', onBack }: Props) {
+  const [tab, setTab] = useState<Tab>('browse');
+  const [current, setCurrent] = useState(initialPath); // '' = list of roots
   const [rows, setRows] = useState<FileRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [pinnedHere, setPinnedHere] = useState(false);
 
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounced(query, 200);
   const [results, setResults] = useState<FileRow[] | null>(null);
 
   const [lastSynced, setLastSynced] = useState<string | null>(null);
+  const [toast, showToast] = useToast();
   const crumbsRef = useRef<ScrollView>(null);
 
   const searchActive = query.trim().length > 0;
+  const mode: Mode = searchActive ? 'search' : tab;
 
-  // Folder listing
+  // Load the list for the current tab
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    listFolder(current)
+    const load = tab === 'browse' ? listFolder(current) : tab === 'recent' ? listRecent() : listPinned();
+    load
       .then((r) => {
         if (!cancelled) {
           setRows(r);
@@ -57,13 +108,28 @@ export default function BrowseScreen({ pairing, onBack }: Props) {
         }
       })
       .catch((e) => {
-        console.error('listFolder failed', e);
+        console.error('loading the list failed', e);
         if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [current]);
+  }, [tab, current, reloadKey]);
+
+  // Is the folder we're looking at pinned?
+  useEffect(() => {
+    if (!current) {
+      setPinnedHere(false);
+      return undefined;
+    }
+    let cancelled = false;
+    isPinned(current).then((p) => {
+      if (!cancelled) setPinnedHere(p);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [current, reloadKey]);
 
   // Search (runs on the debounced value; stale results are ignored)
   useEffect(() => {
@@ -86,11 +152,13 @@ export default function BrowseScreen({ pairing, onBack }: Props) {
     getMeta('last_synced_at').then(setLastSynced);
   }, []);
 
-  // Back button: clear search, then go up a folder, then leave. (No-op on iOS.)
+  // Back button: clear search, then leave Recent/Pinned, then go up a folder, then leave. (No-op on iOS.)
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (query) {
         setQuery('');
+      } else if (tab !== 'browse') {
+        setTab('browse');
       } else if (current) {
         setCurrent(parentOf(current));
       } else {
@@ -99,27 +167,66 @@ export default function BrowseScreen({ pairing, onBack }: Props) {
       return true;
     });
     return () => sub.remove();
-  }, [query, current, onBack]);
+  }, [query, tab, current, onBack]);
+
+  const copy = useCallback(
+    async (label: string, text: string) => {
+      const ok = await copyText(text);
+      showToast(ok ? `${label} copied` : "Copy isn't available in this build");
+    },
+    [showToast],
+  );
+
+  const togglePin = useCallback(
+    async (path: string, name: string) => {
+      const pinned = await isPinned(path);
+      await setPinned(path, !pinned);
+      showToast(pinned ? `Unpinned ${name}` : `Pinned ${name}`);
+      setReloadKey((k) => k + 1);
+    },
+    [showToast],
+  );
+
+  const showDetails = useCallback(
+    (row: FileRow) => {
+      Alert.alert(row.name, `${row.path}\n\n${formatSize(row.size)}\nModified ${formatDateTime(row.mtime)}`, [
+        { text: 'Copy path', onPress: () => void copy('Path', row.path) },
+        { text: 'Copy name', onPress: () => void copy('Name', row.name) },
+        { text: 'Close', style: 'cancel' },
+      ]);
+    },
+    [copy],
+  );
 
   const onPressRow = useCallback(
     (row: FileRow) => {
       if (searchActive) {
         // Folder: open it. File: jump to the folder that contains it.
         setQuery('');
+        setTab('browse');
         setCurrent(row.isDir ? row.path : row.parent);
         return;
       }
       if (row.isDir) {
+        setTab('browse');
         setCurrent(row.path);
       } else {
-        Alert.alert(
-          row.name,
-          `${row.path}\n\n${formatSize(row.size)}\nModified ${formatDateTime(row.mtime)}`,
-        );
+        showDetails(row);
       }
     },
-    [searchActive],
+    [searchActive, showDetails],
   );
+
+  // Long-press: a folder toggles its pin, a file shows its details.
+  const onLongPressRow = useCallback(
+    (row: FileRow) => {
+      if (row.isDir) void togglePin(row.path, row.name);
+      else showDetails(row);
+    },
+    [togglePin, showDetails],
+  );
+
+  const onUnpin = useCallback((row: FileRow) => void togglePin(row.path, row.name), [togglePin]);
 
   const segments = current ? current.split('/') : [];
   const crumbs = segments.map((label, i) => ({ label, path: segments.slice(0, i + 1).join('/') }));
@@ -130,6 +237,8 @@ export default function BrowseScreen({ pairing, onBack }: Props) {
   let emptyText: string | null = null;
   if (!loading && !searching && data.length === 0) {
     if (searchActive) emptyText = `No files match "${query.trim()}"`;
+    else if (tab === 'recent') emptyText = 'No files yet. Go back and tap "Sync now".';
+    else if (tab === 'pinned') emptyText = 'Nothing pinned yet. Open a folder and tap the pin icon, or long-press a folder.';
     else if (current === '') emptyText = 'Nothing synced yet. Go back and tap "Sync now".';
     else emptyText = 'This folder is empty.';
   }
@@ -141,7 +250,14 @@ export default function BrowseScreen({ pairing, onBack }: Props) {
           <ChevronLeft size={22} color={colors.primary} />
           <Text style={styles.backText}>Home</Text>
         </Pressable>
-        {lastSynced ? <Text style={styles.synced}>Synced {formatDate(Number(lastSynced))}</Text> : null}
+        <View style={styles.headerRight}>
+          {lastSynced ? <Text style={styles.synced}>Synced {formatDate(Number(lastSynced))}</Text> : null}
+          {!searchActive && tab === 'browse' && current ? (
+            <Pressable onPress={() => void togglePin(current, segments[segments.length - 1])} hitSlop={12}>
+              <Pin size={20} color={pinnedHere ? colors.primary : colors.muted} />
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
       <View style={styles.searchRow}>
@@ -172,26 +288,42 @@ export default function BrowseScreen({ pairing, onBack }: Props) {
             : `${data.length}${data.length >= SEARCH_LIMIT ? '+' : ''} result${data.length === 1 ? '' : 's'}`}
         </Text>
       ) : (
-        <ScrollView
-          ref={crumbsRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.crumbsBar}
-          contentContainerStyle={styles.crumbs}
-          onContentSizeChange={() => crumbsRef.current?.scrollToEnd({ animated: true })}
-        >
-          <Pressable onPress={() => setCurrent('')} hitSlop={8}>
-            <Text style={[styles.crumb, current === '' && styles.crumbActive]}>{pairing.name}</Text>
-          </Pressable>
-          {crumbs.map((c, i) => (
-            <View key={c.path} style={styles.crumbWrap}>
-              <ChevronRight size={14} color={colors.muted} style={styles.crumbSep} />
-              <Pressable onPress={() => setCurrent(c.path)} hitSlop={8}>
-                <Text style={[styles.crumb, i === crumbs.length - 1 && styles.crumbActive]}>{c.label}</Text>
+        <>
+          <View style={styles.tabs}>
+            {TABS.map(({ key, label, Icon }) => {
+              const active = tab === key;
+              return (
+                <Pressable key={key} onPress={() => setTab(key)} style={[styles.tab, active && styles.tabActive]}>
+                  <Icon size={16} color={active ? '#fff' : colors.muted} />
+                  <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {tab === 'browse' ? (
+            <ScrollView
+              ref={crumbsRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.crumbsBar}
+              contentContainerStyle={styles.crumbs}
+              onContentSizeChange={() => crumbsRef.current?.scrollToEnd({ animated: true })}
+            >
+              <Pressable onPress={() => setCurrent('')} hitSlop={8}>
+                <Text style={[styles.crumb, current === '' && styles.crumbActive]}>{pairing.name}</Text>
               </Pressable>
-            </View>
-          ))}
-        </ScrollView>
+              {crumbs.map((c, i) => (
+                <View key={c.path} style={styles.crumbWrap}>
+                  <ChevronRight size={14} color={colors.muted} style={styles.crumbSep} />
+                  <Pressable onPress={() => setCurrent(c.path)} hitSlop={8}>
+                    <Text style={[styles.crumb, i === crumbs.length - 1 && styles.crumbActive]}>{c.label}</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </ScrollView>
+          ) : null}
+        </>
       )}
 
       {loading || searching ? <ActivityIndicator style={styles.spinner} color={colors.primary} /> : null}
@@ -199,50 +331,72 @@ export default function BrowseScreen({ pairing, onBack }: Props) {
       {emptyText ? <Text style={styles.empty}>{emptyText}</Text> : null}
 
       <FlatList
+        style={styles.list}
         data={data}
         keyExtractor={(item) => item.path}
-        renderItem={({ item }) => <Row item={item} showParent={searchActive} onPress={onPressRow} />}
+        renderItem={({ item }) => (
+          <Row
+            item={item}
+            mode={mode}
+            onPress={onPressRow}
+            onLongPress={onLongPressRow}
+            onUnpin={mode === 'pinned' ? onUnpin : undefined}
+          />
+        )}
         getItemLayout={(_, index) => ({ length: ROW_HEIGHT, offset: ROW_HEIGHT * index, index })}
         initialNumToRender={20}
         windowSize={10}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       />
+
+      {toast ? (
+        <View style={styles.toast} pointerEvents="none">
+          <Text style={styles.toastText}>{toast}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const Row = memo(function Row({
   item,
-  showParent,
+  mode,
   onPress,
+  onLongPress,
+  onUnpin,
 }: {
   item: FileRow;
-  showParent: boolean;
+  mode: Mode;
   onPress: (row: FileRow) => void;
+  onLongPress: (row: FileRow) => void;
+  onUnpin?: (row: FileRow) => void;
 }) {
+  const { Icon, color } = iconFor(item.ext, item.isDir);
+  const sub = subtitleFor(item, mode);
+
   return (
-    <Pressable onPress={() => onPress(item)} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
-      {item.isDir ? (
-        <FolderIcon size={24} color={colors.primary} />
-      ) : (
-        <FileIcon size={24} color={colors.muted} />
-      )}
+    <Pressable
+      onPress={() => onPress(item)}
+      onLongPress={() => onLongPress(item)}
+      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+    >
+      <Icon size={24} color={color} />
       <View style={styles.rowText}>
         <Text style={styles.name} numberOfLines={1}>
           {item.name}
         </Text>
-        {showParent ? (
-          <Text style={styles.meta} numberOfLines={1} ellipsizeMode="head">
-            {item.parent}
-          </Text>
-        ) : (
-          <Text style={styles.meta} numberOfLines={1}>
-            {item.isDir ? 'Folder' : `${formatSize(item.size)} · ${formatDate(item.mtime)}`}
-          </Text>
-        )}
+        <Text style={styles.meta} numberOfLines={1} ellipsizeMode={sub.head ? 'head' : 'tail'}>
+          {sub.text}
+        </Text>
       </View>
-      {item.isDir ? <ChevronRight size={18} color={colors.muted} /> : null}
+      {onUnpin ? (
+        <Pressable onPress={() => onUnpin(item)} hitSlop={12}>
+          <PinOff size={18} color={colors.muted} />
+        </Pressable>
+      ) : item.isDir ? (
+        <ChevronRight size={18} color={colors.muted} />
+      ) : null}
     </Pressable>
   );
 });
@@ -250,9 +404,10 @@ const Row = memo(function Row({
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingRight: 4 },
   backBtn: { flexDirection: 'row', alignItems: 'center' },
   backText: { color: colors.primary, fontSize: 16, fontWeight: '600' },
-  synced: { color: colors.muted, fontSize: 13, paddingRight: 4 },
+  synced: { color: colors.muted, fontSize: 13 },
   searchRow: { paddingHorizontal: 16 },
   searchBox: {
     flexDirection: 'row',
@@ -266,7 +421,23 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, paddingVertical: 10, fontSize: 16, color: colors.text },
   caption: { color: colors.muted, fontSize: 13, paddingHorizontal: 16, paddingVertical: 12 },
-  crumbsBar: { flexGrow: 0 },
+  tabs: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginTop: 12 },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  tabLabel: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  tabLabelActive: { color: '#fff' },
+  // The breadcrumb strip must never be squeezed by the (tall) list below it.
+  crumbsBar: { flexGrow: 0, flexShrink: 0 },
   crumbs: { paddingHorizontal: 16, paddingVertical: 12, alignItems: 'center' },
   crumbWrap: { flexDirection: 'row', alignItems: 'center' },
   crumb: { color: colors.muted, fontSize: 14 },
@@ -274,6 +445,8 @@ const styles = StyleSheet.create({
   crumbSep: { marginHorizontal: 4 },
   spinner: { marginVertical: 12 },
   empty: { color: colors.muted, textAlign: 'center', padding: 24, fontSize: 15 },
+  // The list takes the remaining space and scrolls inside it.
+  list: { flex: 1 },
   row: {
     height: ROW_HEIGHT,
     flexDirection: 'row',
@@ -287,4 +460,14 @@ const styles = StyleSheet.create({
   rowText: { flex: 1 },
   name: { color: colors.text, fontSize: 16 },
   meta: { color: colors.muted, fontSize: 13, marginTop: 2 },
+  toast: {
+    position: 'absolute',
+    bottom: 24,
+    alignSelf: 'center',
+    backgroundColor: colors.text,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  toastText: { color: '#fff', fontSize: 14 },
 });

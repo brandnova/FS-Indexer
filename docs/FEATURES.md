@@ -70,16 +70,17 @@ Goal: anyone can download, install and trust a first public version.
 ### Milestone 2: Quick wins
 Small features that fit the project's core job of finding your files from your phone.
 - [x] OS-aware default folders (Linux XDG user dirs, macOS standard folders, Windows known folders), with hidden and system folders ignored by default (M)
-- [ ] Recent files view (S)
-- [ ] Copy a file's path or name from the file details (S) (new)
-- [ ] Pinned folders for quick access (S) (new)
-- [ ] Auto-sync on app open when the PC is reachable and the index is stale (S) (new)
-- [ ] Home summary: entries and total size per root (S) (new)
-- [ ] File-type icons (images, audio, video, documents, archives, code) (S)
+- [x] Recent files view (S)
+- [x] Copy a file's path or name from the file details (S) (new)
+- [x] Pinned folders for quick access (S) (new)
+- [x] Auto-sync on app open when the PC is reachable and the index is stale (S) (new)
+- [x] Home summary: entries and total size per root (S) (new)
+- [x] File-type icons (images, audio, video, documents, archives, code) (S)
 - [ ] Filters (extension, size, date) and sort options (M)
 - [ ] Search by folder path as well as file name (needs a `path_lc` column and a migration) (S)
 - [x] Configurable allowed networks (for example Tailscale's 100.64.0.0/10) so the app works away from home over a VPN (S) (new)
 - [ ] gzip for `/index`, only if the smoke-test payload sizes justify it (S)
+- [ ] Copy the full PC path of a file (the agent shares each root's location) (S) (new)
 
 ### Milestone 3: Look and feel
 - [ ] General UI/UX optimization for the mobile client (visual design pass, typography and spacing, loading/empty/error states, dark mode, animations, accessibility) (L)
@@ -134,3 +135,4 @@ Must be finished before any feature that serves file contents.
 - 2026-10-05: Milestone 1 batch: config in the OS config folder, `-version`, `-pair`, `-rotate-token`, auth rate-limiting, sensitive-name ignores, API compatibility check, tests and CI, release pipeline. Relicensed to AGPL-3.0-or-later.
 - 2026-10-07: Milestone 1 complete apart from the macOS test: CI green on all systems, `v0.1.0-rc1` published with the APK.
 - 2026-10-07: Milestone 2, batch A: OS-aware default folders and ignores, hidden files skipped by default (`include_hidden`), `allowed_networks` for VPN use.
+- 2026-10-07: Milestone 2, batch B: Browse tabs (Browse, Recent, Pinned), copy path/name, pinned folders, auto-sync on open, per-folder summary on Home, file-type icons. Fixed the breadcrumbs being cropped on long lists.

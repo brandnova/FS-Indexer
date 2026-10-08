@@ -1,19 +1,21 @@
-import { Download, Folder, RefreshCw, Settings, Unlink, Wifi, WifiOff } from 'lucide-react-native';
+import { ChevronRight, Download, Folder, RefreshCw, Settings, Unlink, Wifi, WifiOff } from 'lucide-react-native';
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { ApiError, ping, toApiError } from '../api/client';
 import { countEntries, getMeta } from '../db';
-import { formatDateTime } from '../format';
+import { rootStats, type RootStat } from '../db/queries';
+import { formatDateTime, formatSize } from '../format';
 import { relocate, unpair } from '../pairing';
 import { platform } from '../platform';
-import { syncFromPc, type SyncProgress } from '../sync';
+import { getAutoSync, setAutoSync } from '../settings';
+import { autoSyncPlan, syncFromPc, type SyncProgress } from '../sync';
 import type { PairingInfo, PingResponse } from '../types';
 import { Button, colors } from '../ui';
 
 interface Props {
   pairing: PairingInfo;
-  onBrowse: () => void;
+  onBrowse: (startPath?: string) => void;
   onUnpaired: () => void;
   onRelocated: (pairing: PairingInfo) => void;
 }
@@ -38,8 +40,11 @@ export default function HomeScreen({ pairing, onBrowse, onUnpaired, onRelocated 
   const [error, setError] = useState<ApiError | null>(null);
   const [localCount, setLocalCount] = useState<number | null>(null);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
+  const [stats, setStats] = useState<RootStat[]>([]);
+  const [autoSyncOn, setAutoSyncOn] = useState(true);
 
   const [syncing, setSyncing] = useState(false);
+  const syncingRef = useRef(false);
   const [progress, setProgress] = useState<SyncProgress | null>(null);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -47,13 +52,18 @@ export default function HomeScreen({ pairing, onBrowse, onUnpaired, onRelocated 
   const loadLocal = useCallback(async () => {
     setLocalCount(await countEntries());
     setLastSynced(await getMeta('last_synced_at'));
+    setStats(await rootStats());
+    setAutoSyncOn(await getAutoSync());
   }, []);
 
-  const check = useCallback(async () => {
+  /** Pings the PC (finding it again if its address changed). Returns the answer, or null if offline. */
+  const check = useCallback(async (): Promise<PingResponse | null> => {
     setChecking(true);
     setError(null);
+    let result: PingResponse | null = null;
     try {
-      setRemote(await ping(pairing));
+      result = await ping(pairing);
+      setRemote(result);
     } catch (e) {
       const err = toApiError(e);
 
@@ -63,8 +73,8 @@ export default function HomeScreen({ pairing, onBrowse, onUnpaired, onRelocated 
         const moved = await relocate(pairing).catch(() => null);
         setNote(null);
         if (moved && (moved.host !== pairing.host || moved.port !== pairing.port)) {
-          onRelocated(moved); // new pairing prop re-runs this check
-          return;
+          onRelocated(moved); // the new pairing prop re-runs this check
+          return null;
         }
       }
 
@@ -73,13 +83,25 @@ export default function HomeScreen({ pairing, onBrowse, onUnpaired, onRelocated 
     }
     await loadLocal();
     setChecking(false);
+    return result;
   }, [pairing, loadLocal, onRelocated]);
 
+  // On opening: check the PC, then sync automatically if the phone's copy is out of date.
   useEffect(() => {
-    check();
+    let cancelled = false;
+    (async () => {
+      const result = await check();
+      if (cancelled || !result || syncingRef.current) return;
+      const plan = await autoSyncPlan(result);
+      if (!cancelled && plan.run) await runSync(plan.rescan, true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [check]);
 
-  async function runSync(rescan: boolean) {
+  async function runSync(rescan: boolean, auto = false) {
+    syncingRef.current = true;
     setSyncing(true);
     setSyncError(null);
     setSyncMessage(null);
@@ -87,17 +109,25 @@ export default function HomeScreen({ pairing, onBrowse, onUnpaired, onRelocated 
     try {
       const r = await syncFromPc(pairing, { rescan, onProgress: setProgress });
       const removed = r.removed > 0 ? `, removed ${r.removed.toLocaleString()} deleted` : '';
-      setSyncMessage(`Synced ${r.total.toLocaleString()} entries in ${(r.ms / 1000).toFixed(1)}s${removed}`);
+      setSyncMessage(
+        `${auto ? 'Auto-synced' : 'Synced'} ${r.total.toLocaleString()} entries in ${(r.ms / 1000).toFixed(1)}s${removed}`,
+      );
     } catch (e) {
       setSyncError(e instanceof ApiError ? e.message : `Sync failed: ${String(e)}`);
     }
     setProgress(null);
     setSyncing(false);
+    syncingRef.current = false;
     await check();
   }
 
+  async function toggleAutoSync(value: boolean) {
+    setAutoSyncOn(value);
+    await setAutoSync(value);
+  }
+
   function confirmUnpair() {
-    Alert.alert('Unpair this PC?', 'The saved token and the local file index will be deleted from this phone.', [
+    Alert.alert('Unpair this PC?', 'The saved token, the local file index and your pinned folders will be deleted from this phone.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Unpair',
@@ -159,7 +189,25 @@ export default function HomeScreen({ pairing, onBrowse, onUnpaired, onRelocated 
         </Row>
       </View>
 
-      <Button title="Browse files" icon={Folder} onPress={onBrowse} disabled={!localCount} />
+      <Button title="Browse files" icon={Folder} onPress={() => onBrowse()} disabled={!localCount} />
+
+      {stats.length > 0 ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Folders on this PC</Text>
+          {stats.map((s) => (
+            <Pressable key={s.root} style={styles.statRow} onPress={() => onBrowse(s.root)}>
+              <Folder size={20} color={colors.primary} />
+              <View style={styles.statText}>
+                <Text style={styles.value}>{s.root}</Text>
+                <Text style={styles.help}>
+                  {s.files.toLocaleString()} files · {formatSize(s.bytes)}
+                </Text>
+              </View>
+              <ChevronRight size={18} color={colors.muted} />
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
 
       {error ? (
         <View style={styles.card}>
@@ -180,6 +228,18 @@ export default function HomeScreen({ pairing, onBrowse, onUnpaired, onRelocated 
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Sync</Text>
+
+        <View style={styles.switchRow}>
+          <View style={styles.statText}>
+            <Text style={styles.value}>Sync when opening the app</Text>
+            <Text style={styles.help}>Only when the PC has newer data. A rescan is requested if your last sync is over 6 hours old.</Text>
+          </View>
+          <Switch
+            value={autoSyncOn}
+            onValueChange={toggleAutoSync}
+            trackColor={{ false: colors.border, true: colors.primary }}
+          />
+        </View>
 
         {syncing && progress ? (
           <>
@@ -211,7 +271,15 @@ export default function HomeScreen({ pairing, onBrowse, onUnpaired, onRelocated 
       </View>
 
       <View style={styles.actions}>
-        <Button title="Re-check connection" variant="secondary" icon={Wifi} onPress={check} disabled={busy} />
+        <Button
+          title="Re-check connection"
+          variant="secondary"
+          icon={Wifi}
+          onPress={() => {
+            void check();
+          }}
+          disabled={busy}
+        />
         <Button title="Unpair" variant="danger" icon={Unlink} onPress={confirmUnpair} disabled={syncing} />
       </View>
     </ScrollView>
@@ -235,6 +303,9 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   inline: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4 },
+  statText: { flex: 1 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   rowLabel: { color: colors.muted, fontSize: 15 },
   value: { color: colors.text, fontSize: 15, fontWeight: '500' },
   ok: { color: colors.ok, fontSize: 15 },

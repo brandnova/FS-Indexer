@@ -34,6 +34,8 @@ function toRow(r: RawRow): FileRow {
   };
 }
 
+// ---------- browsing ----------
+
 /** Children of a folder. Pass '' to list the roots. Folders first, then A-Z. */
 export async function listFolder(parent: string): Promise<FileRow[]> {
   const db = await getDb();
@@ -43,6 +45,67 @@ export async function listFolder(parent: string): Promise<FileRow[]> {
   );
   return rows.map(toRow);
 }
+
+/** The most recently modified files, newest first. */
+export async function listRecent(limit = 100): Promise<FileRow[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<RawRow>(
+    `SELECT ${COLUMNS} FROM files WHERE is_dir = 0 ORDER BY mtime DESC LIMIT ?`,
+    limit,
+  );
+  return rows.map(toRow);
+}
+
+// ---------- pinned folders ----------
+
+/** Pinned folders that still exist in the index, most recently pinned first. */
+export async function listPinned(): Promise<FileRow[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<RawRow>(
+    `SELECT f.path, f.parent, f.name, f.ext, f.size, f.mtime, f.is_dir
+       FROM pins p JOIN files f ON f.path = p.path
+      ORDER BY p.pinned_at DESC`,
+  );
+  return rows.map(toRow);
+}
+
+export async function isPinned(path: string): Promise<boolean> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM pins WHERE path = ?', path);
+  return (row?.n ?? 0) > 0;
+}
+
+export async function setPinned(path: string, pinned: boolean): Promise<void> {
+  const db = await getDb();
+  if (pinned) {
+    await db.runAsync('INSERT OR REPLACE INTO pins (path, pinned_at) VALUES (?, ?)', path, Math.floor(Date.now() / 1000));
+  } else {
+    await db.runAsync('DELETE FROM pins WHERE path = ?', path);
+  }
+}
+
+// ---------- summary ----------
+
+export interface RootStat {
+  root: string;
+  files: number;
+  bytes: number;
+}
+
+/** File count and total size per root folder. */
+export async function rootStats(): Promise<RootStat[]> {
+  const db = await getDb();
+  return db.getAllAsync<RootStat>(
+    `SELECT substr(path, 1, instr(path || '/', '/') - 1) AS root,
+            SUM(CASE WHEN is_dir = 0 THEN 1 ELSE 0 END) AS files,
+            COALESCE(SUM(size), 0) AS bytes
+       FROM files
+      GROUP BY root
+      ORDER BY root COLLATE NOCASE`,
+  );
+}
+
+// ---------- search ----------
 
 export const SEARCH_LIMIT = 200;
 
