@@ -16,11 +16,11 @@ export interface SyncResult {
   ms: number;
 }
 
-const ROWS_PER_STATEMENT = 100; // 9 params per row = 900, under SQLite's classic 999 limit
+const ROWS_PER_STATEMENT = 90; // 10 params per row = 900, under SQLite's classic 999 limit
 const ROWS_PER_TRANSACTION = 1000;
 const READ_STALL_MS = 15_000; // give up if the PC stops sending data for this long
-const COLUMNS = '(path, parent, name, name_lc, ext, size, mtime, is_dir, sync_id)';
-const ROW_PLACEHOLDER = '(?, ?, ?, ?, ?, ?, ?, ?, ?)';
+const COLUMNS = '(path, parent, name, name_lc, path_lc, ext, size, mtime, is_dir, sync_id)';
+const ROW_PLACEHOLDER = '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
 // ---------- automatic sync ----------
 
@@ -98,6 +98,7 @@ async function downloadIndex(
   syncId: number,
   onProgress?: (p: SyncProgress) => void,
 ): Promise<number> {
+  // The phone's networking layer asks for gzip and decompresses it for us.
   const res = await apiRequest(c, '/index', { timeoutMs: 10_000 });
 
   const header = res.headers.get('X-File-Count');
@@ -172,7 +173,18 @@ async function insertBatch(db: SQLiteDatabase, entries: Entry[], syncId: number)
       const slice = entries.slice(i, i + ROWS_PER_STATEMENT);
       const params: (string | number)[] = [];
       for (const e of slice) {
-        params.push(e.path, e.parent, e.name, e.name.toLowerCase(), e.ext, e.size, e.mtime, e.is_dir ? 1 : 0, syncId);
+        params.push(
+          e.path,
+          e.parent,
+          e.name,
+          e.name.toLowerCase(),
+          e.path.toLowerCase(),
+          e.ext,
+          e.size,
+          e.mtime,
+          e.is_dir ? 1 : 0,
+          syncId,
+        );
       }
       const placeholders = new Array(slice.length).fill(ROW_PLACEHOLDER).join(', ');
       await db.runAsync(`INSERT OR REPLACE INTO files ${COLUMNS} VALUES ${placeholders}`, params);

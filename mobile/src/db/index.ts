@@ -60,6 +60,20 @@ async function openAndMigrate(): Promise<SQLite.SQLiteDatabase> {
     `);
   }
 
+  // Version 3: lowercase full path, for searching by folder name too.
+  // SQLite's lower() only handles ASCII, so the stored sync stamp is dropped:
+  // the next sync rewrites every row with a properly lowercased value (JS toLowerCase).
+  if (current < 3) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        ALTER TABLE files ADD COLUMN path_lc TEXT NOT NULL DEFAULT '';
+        UPDATE files SET path_lc = lower(path);
+        DELETE FROM meta WHERE key = 'synced_pc_indexed_at';
+        PRAGMA user_version = 3;
+      `);
+    });
+  }
+
   return db;
 }
 

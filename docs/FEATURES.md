@@ -33,6 +33,7 @@ Living document. Update it whenever a feature is added, changed, or moved betwee
 - [x] `-dump` debug flag (prints the index as NDJSON and exits)
 - [x] Graceful shutdown on Ctrl+C
 - [x] mDNS advertising of `_fs-sync._tcp` (device id and name only, never the token), limited to the LAN interface; `-no-mdns` flag
+- [x] `/index` is gzip-compressed for clients that ask for it, and each sync is logged with entries, encoding, bytes sent and duration
 
 ## Mobile (Expo): shipped
 
@@ -76,10 +77,10 @@ Small features that fit the project's core job of finding your files from your p
 - [x] Auto-sync on app open when the PC is reachable and the index is stale (S) (new)
 - [x] Home summary: entries and total size per root (S) (new)
 - [x] File-type icons (images, audio, video, documents, archives, code) (S)
-- [ ] Filters (extension, size, date) and sort options (M)
-- [ ] Search by folder path as well as file name (needs a `path_lc` column and a migration) (S)
+- [x] Filters (extension, size, date) and sort options (M)
+- [x] Search by folder path as well as file name (needs a `path_lc` column and a migration) (S)
 - [x] Configurable allowed networks (for example Tailscale's 100.64.0.0/10) so the app works away from home over a VPN (S) (new)
-- [ ] gzip for `/index`, only if the smoke-test payload sizes justify it (S)
+- [x] gzip for `/index`, only if the smoke-test payload sizes justify it (S)
 - [ ] Copy the full PC path of a file (the agent shares each root's location) (S) (new)
 
 ### Milestone 3: Look and feel
@@ -136,3 +137,4 @@ Must be finished before any feature that serves file contents.
 - 2026-10-07: Milestone 1 complete apart from the macOS test: CI green on all systems, `v0.1.0-rc1` published with the APK.
 - 2026-10-07: Milestone 2, batch A: OS-aware default folders and ignores, hidden files skipped by default (`include_hidden`), `allowed_networks` for VPN use.
 - 2026-10-07: Milestone 2, batch B: Browse tabs (Browse, Recent, Pinned), copy path/name, pinned folders, auto-sync on open, per-folder summary on Home, file-type icons. Fixed the breadcrumbs being cropped on long lists.
+- 2026-10-08: Milestone 2 complete: filters, sort and search scope (names or names and folders) in the app; gzip for `/index`; database schema version 3.

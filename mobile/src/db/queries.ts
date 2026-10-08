@@ -34,24 +34,83 @@ function toRow(r: RawRow): FileRow {
   };
 }
 
+// ---------- filters and sorting ----------
+
+export type SortKey = 'default' | 'name' | 'name_desc' | 'newest' | 'oldest' | 'largest' | 'smallest';
+export type SearchScope = 'all' | 'names'; // names + folder names, or file/folder names only
+
+export interface FilterSpec {
+  exts?: string[]; // only files with these extensions
+  modifiedAfter?: number; // unix seconds
+  minSize?: number; // bytes
+  sort?: SortKey;
+}
+
+const ORDER: Record<Exclude<SortKey, 'default'>, string> = {
+  name: 'name_lc ASC',
+  name_desc: 'name_lc DESC',
+  newest: 'mtime DESC, name_lc ASC',
+  oldest: 'mtime ASC, name_lc ASC',
+  largest: 'size DESC, name_lc ASC',
+  smallest: 'size ASC, name_lc ASC',
+};
+
+function orderFor(sort: SortKey | undefined, fallback: Exclude<SortKey, 'default'>): string {
+  return ORDER[sort && sort !== 'default' ? sort : fallback];
+}
+
+/** Conditions that only make sense for files (type, date, size). */
+function fileConditions(f: FilterSpec): { sql: string[]; params: (string | number)[] } {
+  const sql: string[] = [];
+  const params: (string | number)[] = [];
+  if (f.exts && f.exts.length > 0) {
+    sql.push(`ext IN (${f.exts.map(() => '?').join(', ')})`);
+    params.push(...f.exts);
+  }
+  if (f.modifiedAfter) {
+    sql.push('mtime >= ?');
+    params.push(f.modifiedAfter);
+  }
+  if (f.minSize) {
+    sql.push('size >= ?');
+    params.push(f.minSize);
+  }
+  return { sql, params };
+}
+
+export function hasFileFilters(f: FilterSpec): boolean {
+  return fileConditions(f).sql.length > 0;
+}
+
 // ---------- browsing ----------
 
-/** Children of a folder. Pass '' to list the roots. Folders first, then A-Z. */
-export async function listFolder(parent: string): Promise<FileRow[]> {
+/** Children of a folder. Pass '' to list the roots. Folders stay visible whatever the filters. */
+export async function listFolder(parent: string, f: FilterSpec = {}): Promise<FileRow[]> {
+  const { sql, params } = fileConditions(f);
+  const where = ['parent = ?'];
+  const args: (string | number)[] = [parent];
+  if (sql.length > 0) {
+    where.push(`(is_dir = 1 OR (${sql.join(' AND ')}))`);
+    args.push(...params);
+  }
+
   const db = await getDb();
   const rows = await db.getAllAsync<RawRow>(
-    `SELECT ${COLUMNS} FROM files WHERE parent = ? ORDER BY is_dir DESC, name_lc ASC`,
-    parent,
+    `SELECT ${COLUMNS} FROM files WHERE ${where.join(' AND ')} ORDER BY is_dir DESC, ${orderFor(f.sort, 'name')}`,
+    args,
   );
   return rows.map(toRow);
 }
 
-/** The most recently modified files, newest first. */
-export async function listRecent(limit = 100): Promise<FileRow[]> {
+/** Files only, newest first unless another sort is chosen. */
+export async function listRecent(f: FilterSpec = {}, limit = 100): Promise<FileRow[]> {
+  const { sql, params } = fileConditions(f);
+  const where = ['is_dir = 0', ...sql];
+
   const db = await getDb();
   const rows = await db.getAllAsync<RawRow>(
-    `SELECT ${COLUMNS} FROM files WHERE is_dir = 0 ORDER BY mtime DESC LIMIT ?`,
-    limit,
+    `SELECT ${COLUMNS} FROM files WHERE ${where.join(' AND ')} ORDER BY ${orderFor(f.sort, 'newest')} LIMIT ?`,
+    [...params, limit],
   );
   return rows.map(toRow);
 }
@@ -114,23 +173,53 @@ export function tokenize(query: string): string[] {
   return query.toLowerCase().split(/\s+/).filter(Boolean);
 }
 
+// Escape LIKE wildcards so typing "%" or "_" searches for the literal character.
+const likePattern = (token: string) => `%${token.replace(/[\\%_]/g, '\\$&')}%`;
+
+const likeAll = (column: string, count: number) =>
+  Array.from({ length: count }, () => `${column} LIKE ? ESCAPE '\\'`).join(' AND ');
+
 /**
- * Every word must appear somewhere in the name (any order, case-insensitive).
- * Shorter names rank first, which tends to put closer matches on top.
+ * Every word must appear (any order, case-insensitive): in the file/folder name
+ * ('names'), or anywhere in the full path ('all'). In 'all' mode, files whose
+ * own name matches come first.
  */
-export async function searchFiles(query: string, limit = SEARCH_LIMIT): Promise<FileRow[]> {
+export async function searchFiles(
+  query: string,
+  opts: { scope?: SearchScope; filters?: FilterSpec; limit?: number } = {},
+): Promise<FileRow[]> {
+  const { scope = 'all', filters = {}, limit = SEARCH_LIMIT } = opts;
   const tokens = tokenize(query);
   if (tokens.length === 0) return [];
 
-  const where = tokens.map(() => "name_lc LIKE ? ESCAPE '\\'").join(' AND ');
-  // Escape LIKE wildcards so typing "%" or "_" searches for the literal character.
-  const params: (string | number)[] = tokens.map((t) => `%${t.replace(/[\\%_]/g, '\\$&')}%`);
-  params.push(limit);
+  const likes = tokens.map(likePattern);
+  const nameMatch = likeAll('name_lc', tokens.length);
+
+  const where: string[] = [scope === 'all' ? likeAll('path_lc', tokens.length) : nameMatch];
+  const args: (string | number)[] = [...likes];
+
+  const { sql, params } = fileConditions(filters);
+  if (sql.length > 0) {
+    where.push('is_dir = 0', ...sql);
+    args.push(...params);
+  }
+
+  // Placeholders must stay in the same order as they appear in the SQL text.
+  let orderBy: string;
+  if (filters.sort && filters.sort !== 'default') {
+    orderBy = ORDER[filters.sort];
+  } else if (scope === 'all') {
+    orderBy = `CASE WHEN ${nameMatch} THEN 0 ELSE 1 END, length(name_lc), name_lc`;
+    args.push(...likes);
+  } else {
+    orderBy = 'length(name_lc), name_lc';
+  }
+  args.push(limit);
 
   const db = await getDb();
   const rows = await db.getAllAsync<RawRow>(
-    `SELECT ${COLUMNS} FROM files WHERE ${where} ORDER BY length(name_lc), name_lc LIMIT ?`,
-    params,
+    `SELECT ${COLUMNS} FROM files WHERE ${where.join(' AND ')} ORDER BY ${orderBy} LIMIT ?`,
+    args,
   );
   return rows.map(toRow);
 }

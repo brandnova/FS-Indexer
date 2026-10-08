@@ -2,8 +2,12 @@ package main
 
 import (
 	"bufio"
+	"compress/gzip"
 	"crypto/subtle"
 	"encoding/json"
+	"fmt"
+	"io"
+	"log"
 	"net"
 	"net/http"
 	"strconv"
@@ -57,16 +61,35 @@ func pingHandler(cfg *Config, ix *Indexer) http.HandlerFunc {
 	}
 }
 
+// indexHandler streams the snapshot as NDJSON, gzip-compressed when the
+// client asks for it (phones do automatically).
 func indexHandler(ix *Indexer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
 		entries, _ := ix.Snapshot()
 
 		h := w.Header()
 		h.Set("Content-Type", "application/x-ndjson")
 		h.Set("X-File-Count", strconv.Itoa(len(entries)))
 		h.Set("Cache-Control", "no-store")
+		h.Add("Vary", "Accept-Encoding")
 
-		bw := bufio.NewWriterSize(w, 64*1024)
+		// Counts the bytes that really go over the network (after compression).
+		sent := &countingWriter{w: w}
+		var out io.Writer = sent
+		var gz *gzip.Writer
+		encoding := "plain"
+
+		if acceptsGzip(r) {
+			if zw, err := gzip.NewWriterLevel(sent, gzip.BestSpeed); err == nil {
+				gz = zw
+				h.Set("Content-Encoding", "gzip")
+				out = zw
+				encoding = "gzip"
+			}
+		}
+
+		bw := bufio.NewWriterSize(out, 64*1024)
 		enc := json.NewEncoder(bw)
 		enc.SetEscapeHTML(false)
 
@@ -80,6 +103,12 @@ func indexHandler(ix *Indexer) http.HandlerFunc {
 			}
 		}
 		_ = bw.Flush()
+		if gz != nil {
+			_ = gz.Close() // writes the final compressed block
+		}
+
+		log.Printf("index: %d entries to %s (%s, %s sent) in %s",
+			len(entries), clientIP(r), encoding, humanBytes(sent.n), time.Since(start).Round(time.Millisecond))
 	}
 }
 
@@ -147,6 +176,27 @@ func auth(token string, lim *limiter, next http.Handler) http.Handler {
 		lim.reset(ip)
 		next.ServeHTTP(w, r)
 	})
+}
+
+// ---------- helpers ----------
+
+func acceptsGzip(r *http.Request) bool {
+	return strings.Contains(strings.ToLower(r.Header.Get("Accept-Encoding")), "gzip")
+}
+
+type countingWriter struct {
+	w io.Writer
+	n int64
+}
+
+func (c *countingWriter) Write(p []byte) (int, error) {
+	n, err := c.w.Write(p)
+	c.n += int64(n)
+	return n, err
+}
+
+func humanBytes(n int64) string {
+	return fmt.Sprintf("%.1f MB", float64(n)/1e6)
 }
 
 func clientIP(r *http.Request) string {

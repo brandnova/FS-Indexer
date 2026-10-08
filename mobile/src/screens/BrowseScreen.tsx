@@ -6,10 +6,11 @@ import {
   Pin,
   PinOff,
   Search,
+  SlidersHorizontal,
   X,
   type LucideIcon,
 } from 'lucide-react-native';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -23,9 +24,11 @@ import {
   View,
 } from 'react-native';
 import { copyText } from '../clipboard';
+import FilterSheet from '../components/FilterSheet';
 import { getMeta } from '../db';
 import {
   SEARCH_LIMIT,
+  hasFileFilters,
   isPinned,
   listFolder,
   listPinned,
@@ -36,6 +39,7 @@ import {
   type FileRow,
 } from '../db/queries';
 import { iconFor } from '../fileTypes';
+import { DEFAULT_FILTERS, activeCount, describe, toSpec, type FilterState } from '../filters';
 import { formatDate, formatDateTime, formatSize } from '../format';
 import { useDebounced, useToast } from '../hooks';
 import type { PairingInfo } from '../types';
@@ -84,6 +88,11 @@ export default function BrowseScreen({ pairing, initialPath = '', onBack }: Prop
   const [reloadKey, setReloadKey] = useState(0);
   const [pinnedHere, setPinnedHere] = useState(false);
 
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const spec = useMemo(() => toSpec(filters), [filters]);
+  const activeFilters = activeCount(filters);
+
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounced(query, 200);
   const [results, setResults] = useState<FileRow[] | null>(null);
@@ -99,7 +108,8 @@ export default function BrowseScreen({ pairing, initialPath = '', onBack }: Prop
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    const load = tab === 'browse' ? listFolder(current) : tab === 'recent' ? listRecent() : listPinned();
+    const load =
+      tab === 'browse' ? listFolder(current, spec) : tab === 'recent' ? listRecent(spec) : listPinned();
     load
       .then((r) => {
         if (!cancelled) {
@@ -114,7 +124,7 @@ export default function BrowseScreen({ pairing, initialPath = '', onBack }: Prop
     return () => {
       cancelled = true;
     };
-  }, [tab, current, reloadKey]);
+  }, [tab, current, spec, reloadKey]);
 
   // Is the folder we're looking at pinned?
   useEffect(() => {
@@ -138,7 +148,7 @@ export default function BrowseScreen({ pairing, initialPath = '', onBack }: Prop
       return;
     }
     let cancelled = false;
-    searchFiles(debouncedQuery)
+    searchFiles(debouncedQuery, { scope: filters.scope, filters: spec })
       .then((r) => {
         if (!cancelled) setResults(r);
       })
@@ -146,7 +156,7 @@ export default function BrowseScreen({ pairing, initialPath = '', onBack }: Prop
     return () => {
       cancelled = true;
     };
-  }, [debouncedQuery]);
+  }, [debouncedQuery, spec, filters.scope]);
 
   useEffect(() => {
     getMeta('last_synced_at').then(setLastSynced);
@@ -237,8 +247,9 @@ export default function BrowseScreen({ pairing, initialPath = '', onBack }: Prop
   let emptyText: string | null = null;
   if (!loading && !searching && data.length === 0) {
     if (searchActive) emptyText = `No files match "${query.trim()}"`;
-    else if (tab === 'recent') emptyText = 'No files yet. Go back and tap "Sync now".';
     else if (tab === 'pinned') emptyText = 'Nothing pinned yet. Open a folder and tap the pin icon, or long-press a folder.';
+    else if (hasFileFilters(spec)) emptyText = 'Nothing matches your filters.';
+    else if (tab === 'recent') emptyText = 'No files yet. Go back and tap "Sync now".';
     else if (current === '') emptyText = 'Nothing synced yet. Go back and tap "Sync now".';
     else emptyText = 'This folder is empty.';
   }
@@ -257,6 +268,10 @@ export default function BrowseScreen({ pairing, initialPath = '', onBack }: Prop
               <Pin size={20} color={pinnedHere ? colors.primary : colors.muted} />
             </Pressable>
           ) : null}
+          <Pressable onPress={() => setSheetOpen(true)} hitSlop={12}>
+            <SlidersHorizontal size={20} color={activeFilters > 0 ? colors.primary : colors.muted} />
+            {activeFilters > 0 ? <View style={styles.dot} /> : null}
+          </Pressable>
         </View>
       </View>
 
@@ -280,6 +295,17 @@ export default function BrowseScreen({ pairing, initialPath = '', onBack }: Prop
           ) : null}
         </View>
       </View>
+
+      {activeFilters > 0 ? (
+        <View style={styles.filterBar}>
+          <Text style={styles.filterText} numberOfLines={1}>
+            {describe(filters)}
+          </Text>
+          <Pressable onPress={() => setFilters(DEFAULT_FILTERS)} hitSlop={10}>
+            <Text style={styles.clearLink}>Clear</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {searchActive ? (
         <Text style={styles.caption}>
@@ -355,6 +381,8 @@ export default function BrowseScreen({ pairing, initialPath = '', onBack }: Prop
           <Text style={styles.toastText}>{toast}</Text>
         </View>
       ) : null}
+
+      <FilterSheet visible={sheetOpen} value={filters} onChange={setFilters} onClose={() => setSheetOpen(false)} />
     </View>
   );
 }
@@ -408,6 +436,7 @@ const styles = StyleSheet.create({
   backBtn: { flexDirection: 'row', alignItems: 'center' },
   backText: { color: colors.primary, fontSize: 16, fontWeight: '600' },
   synced: { color: colors.muted, fontSize: 13 },
+  dot: { position: 'absolute', top: -2, right: -3, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.danger },
   searchRow: { paddingHorizontal: 16 },
   searchBox: {
     flexDirection: 'row',
@@ -420,6 +449,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   searchInput: { flex: 1, paddingVertical: 10, fontSize: 16, color: colors.text },
+  filterBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingHorizontal: 16, paddingTop: 10 },
+  filterText: { flex: 1, color: colors.primary, fontSize: 13 },
+  clearLink: { color: colors.primary, fontSize: 13, fontWeight: '700' },
   caption: { color: colors.muted, fontSize: 13, paddingHorizontal: 16, paddingVertical: 12 },
   tabs: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginTop: 12 },
   tab: {

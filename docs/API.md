@@ -76,6 +76,8 @@ Streams the full snapshot as NDJSON (`Content-Type: application/x-ndjson`), one 
 
 If a scan is running, this serves the previous completed snapshot.
 
+**Compression.** If the request has `Accept-Encoding: gzip`, the body is gzip-compressed and the response carries `Content-Encoding: gzip`. Phones and `curl --compressed` ask for it automatically; other clients get plain NDJSON. `X-File-Count` is the number of entries either way.
+
 ## POST /reindex
 
 Triggers a rescan in the background.
