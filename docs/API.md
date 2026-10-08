@@ -92,3 +92,20 @@ Poll `GET /ping` until `scanning` is `false` and `indexed_at` has changed.
 ## Versioning
 
 Breaking changes bump the URL prefix (`/api/v2`). Adding fields to entries is not breaking, so clients must ignore unknown fields.
+
+## GET /roots
+
+Where each indexed folder lives on the PC, so a client can show real paths. Added after v0.1: older agents return 404, so clients must treat it as optional.
+
+```json
+{
+  "sep": "/",
+  "roots": [
+    { "label": "Documents", "path": "/home/me/Documents" }
+  ]
+}
+```
+
+- `label` is the first segment of every path under that root in the index.
+- `path` is the absolute folder on the PC.
+- `sep` is the PC's path separator (`/` or `\`). To build a full path, join `path`, `sep`, and the rest of the index path with `/` replaced by `sep`.

@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { getDb } from './src/db';
 import { loadPairing } from './src/pairing';
+import { refreshPcRoots } from './src/pcPaths';
 import BrowseScreen from './src/screens/BrowseScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import PairScreen from './src/screens/PairScreen';
@@ -23,6 +24,11 @@ export default function App() {
       .catch(() => setPairing(null));
     getDb().catch((e) => console.error('Database failed to open', e));
   }, []);
+
+  // Learn where the PC's folders live (for "Copy PC path"). Quietly does nothing if the PC is offline.
+  useEffect(() => {
+    if (pairing) void refreshPcRoots(pairing);
+  }, [pairing]);
 
   let content;
   if (pairing === undefined) {

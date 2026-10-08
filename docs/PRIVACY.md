@@ -18,6 +18,7 @@ FS Indexer does not collect your data. There are no accounts, no analytics, no a
 - It shares that list only with phones that present your access token, over your local network.
 - It stores its settings (including the access token) in a local configuration file on your PC.
 - It does not read or upload the contents of your files.
+- It also tells paired phones where each chosen folder is on your PC (for example `/home/you/Documents`), so the app can show full file paths.
 
 **On your phone (the app):**
 
@@ -26,6 +27,7 @@ FS Indexer does not collect your data. There are no accounts, no analytics, no a
 - It uses the camera only to scan the pairing QR code. Images are not saved or sent anywhere.
 - It uses local-network access only to talk to your own PC.
 - It stores your pinned folders and app settings on the phone. Copying a file's path puts that text on your clipboard only when you tap Copy.
+- It remembers where your PC's folders are located, so it can show and copy full paths.
 
 ## What we collect and share
 

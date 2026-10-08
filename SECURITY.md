@@ -28,7 +28,7 @@ Good-faith security research on your own devices and network is welcome. Please 
 
 ## What the software exposes
 
-The agent shares **file names, paths, sizes and modification times** for the folders in roots (by default your standard folders such as Documents and Downloads), to phones that present the access token. In the current version it does **not** serve file contents.
+The agent shares **file names, paths, sizes and modification times** for the folders in `roots` (by default your standard folders such as Documents and Downloads), plus the **full location** of each of those folders on your PC, to phones that present the access token. In the current version it does **not** serve file contents.
 
 ## Known limitations
 

@@ -2,6 +2,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Copy,
   Folder as FolderIcon,
   Pin,
   PinOff,
@@ -13,7 +14,6 @@ import {
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   BackHandler,
   FlatList,
   Pressable,
@@ -24,6 +24,7 @@ import {
   View,
 } from 'react-native';
 import { copyText } from '../clipboard';
+import DetailsSheet from '../components/DetailsSheet';
 import FilterSheet from '../components/FilterSheet';
 import { getMeta } from '../db';
 import {
@@ -40,8 +41,9 @@ import {
 } from '../db/queries';
 import { iconFor } from '../fileTypes';
 import { DEFAULT_FILTERS, activeCount, describe, toSpec, type FilterState } from '../filters';
-import { formatDate, formatDateTime, formatSize } from '../format';
+import { formatDate, formatSize } from '../format';
 import { useDebounced, useToast } from '../hooks';
+import { fullPcPath } from '../pcPaths';
 import type { PairingInfo } from '../types';
 import { colors } from '../ui';
 
@@ -92,6 +94,8 @@ export default function BrowseScreen({ pairing, initialPath = '', onBack }: Prop
   const [sheetOpen, setSheetOpen] = useState(false);
   const spec = useMemo(() => toSpec(filters), [filters]);
   const activeFilters = activeCount(filters);
+
+  const [details, setDetails] = useState<{ row: FileRow; pcPath: string | null } | null>(null);
 
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounced(query, 200);
@@ -187,6 +191,12 @@ export default function BrowseScreen({ pairing, initialPath = '', onBack }: Prop
     [showToast],
   );
 
+  // Copies the full PC path of the folder we're in (or the app path if the PC's location isn't known).
+  const copyFolderPath = useCallback(async () => {
+    const pc = await fullPcPath(current);
+    await copy(pc ? 'PC path' : 'App path', pc ?? current);
+  }, [current, copy]);
+
   const togglePin = useCallback(
     async (path: string, name: string) => {
       const pinned = await isPinned(path);
@@ -197,13 +207,18 @@ export default function BrowseScreen({ pairing, initialPath = '', onBack }: Prop
     [showToast],
   );
 
-  const showDetails = useCallback(
-    (row: FileRow) => {
-      Alert.alert(row.name, `${row.path}\n\n${formatSize(row.size)}\nModified ${formatDateTime(row.mtime)}`, [
-        { text: 'Copy path', onPress: () => void copy('Path', row.path) },
-        { text: 'Copy name', onPress: () => void copy('Name', row.name) },
-        { text: 'Close', style: 'cancel' },
-      ]);
+  const showDetails = useCallback((row: FileRow) => {
+    setDetails({ row, pcPath: null });
+    void fullPcPath(row.path).then((pcPath) =>
+      setDetails((d) => (d && d.row.path === row.path ? { row, pcPath } : d)),
+    );
+  }, []);
+
+  // The sheet is a separate window, so close it first: the toast shows in this screen.
+  const onCopyFromSheet = useCallback(
+    (label: string, text: string) => {
+      setDetails(null);
+      void copy(label, text);
     },
     [copy],
   );
@@ -254,6 +269,8 @@ export default function BrowseScreen({ pairing, initialPath = '', onBack }: Prop
     else emptyText = 'This folder is empty.';
   }
 
+  const inFolder = !searchActive && tab === 'browse' && current !== '';
+
   return (
     <View style={styles.root}>
       <View style={styles.header}>
@@ -263,10 +280,15 @@ export default function BrowseScreen({ pairing, initialPath = '', onBack }: Prop
         </Pressable>
         <View style={styles.headerRight}>
           {lastSynced ? <Text style={styles.synced}>Synced {formatDate(Number(lastSynced))}</Text> : null}
-          {!searchActive && tab === 'browse' && current ? (
-            <Pressable onPress={() => void togglePin(current, segments[segments.length - 1])} hitSlop={12}>
-              <Pin size={20} color={pinnedHere ? colors.primary : colors.muted} />
-            </Pressable>
+          {inFolder ? (
+            <>
+              <Pressable onPress={() => void copyFolderPath()} hitSlop={12}>
+                <Copy size={20} color={colors.muted} />
+              </Pressable>
+              <Pressable onPress={() => void togglePin(current, segments[segments.length - 1])} hitSlop={12}>
+                <Pin size={20} color={pinnedHere ? colors.primary : colors.muted} />
+              </Pressable>
+            </>
           ) : null}
           <Pressable onPress={() => setSheetOpen(true)} hitSlop={12}>
             <SlidersHorizontal size={20} color={activeFilters > 0 ? colors.primary : colors.muted} />
@@ -383,6 +405,12 @@ export default function BrowseScreen({ pairing, initialPath = '', onBack }: Prop
       ) : null}
 
       <FilterSheet visible={sheetOpen} value={filters} onChange={setFilters} onClose={() => setSheetOpen(false)} />
+      <DetailsSheet
+        row={details?.row ?? null}
+        pcPath={details?.pcPath ?? null}
+        onCopy={onCopyFromSheet}
+        onClose={() => setDetails(null)}
+      />
     </View>
   );
 }

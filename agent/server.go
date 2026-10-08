@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -26,6 +27,7 @@ func NewServer(cfg *Config, ix *Indexer) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/ping", pingHandler(cfg, ix))
 	mux.HandleFunc("GET /api/v1/index", indexHandler(ix))
+	mux.HandleFunc("GET /api/v1/roots", rootsHandler(cfg))
 	mux.HandleFunc("POST /api/v1/reindex", reindexHandler(ix))
 
 	// 10 failed attempts within a minute locks that address out for a minute.
@@ -109,6 +111,25 @@ func indexHandler(ix *Indexer) http.HandlerFunc {
 
 		log.Printf("index: %d entries to %s (%s, %s sent) in %s",
 			len(entries), clientIP(r), encoding, humanBytes(sent.n), time.Since(start).Round(time.Millisecond))
+	}
+}
+
+// rootsHandler tells the phone where each indexed folder lives on this PC, so
+// it can show real paths. Roots were resolved to absolute paths at startup.
+func rootsHandler(cfg *Config) http.HandlerFunc {
+	type rootInfo struct {
+		Label string `json:"label"`
+		Path  string `json:"path"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		roots := make([]rootInfo, 0, len(cfg.Roots))
+		for _, root := range cfg.Roots {
+			roots = append(roots, rootInfo{Label: root.Label, Path: root.Path})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"sep":   string(filepath.Separator),
+			"roots": roots,
+		})
 	}
 }
 

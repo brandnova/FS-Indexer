@@ -25,6 +25,7 @@ Living document. Update it whenever a feature is added, changed, or moved betwee
 - [x] In-memory snapshot; startup scan runs in the background
 - [x] `GET /api/v1/ping` (includes `scanning` flag)
 - [x] `GET /api/v1/index` streamed as NDJSON, with `X-File-Count` header
+- [x] `GET /api/v1/roots` shares each root's location on the PC (label, absolute path) and the PC's path separator
 - [x] `POST /api/v1/reindex` (202 started / 409 already scanning)
 - [x] Bearer-token auth (constant-time compare)
 - [x] LAN-only guard (rejects non-private source addresses with 403)
@@ -81,7 +82,7 @@ Small features that fit the project's core job of finding your files from your p
 - [x] Search by folder path as well as file name (needs a `path_lc` column and a migration) (S)
 - [x] Configurable allowed networks (for example Tailscale's 100.64.0.0/10) so the app works away from home over a VPN (S) (new)
 - [x] gzip for `/index`, only if the smoke-test payload sizes justify it (S)
-- [ ] Copy the full PC path of a file (the agent shares each root's location) (S) (new)
+- [x] Copy the full PC path of a file (the agent shares each root's location) (S) (new)
 
 ### Milestone 3: Look and feel
 - [ ] General UI/UX optimization for the mobile client (visual design pass, typography and spacing, loading/empty/error states, dark mode, animations, accessibility) (L)
@@ -91,7 +92,7 @@ Small features that fit the project's core job of finding your files from your p
 ### Milestone 4: Agent management
 - [ ] Local web UI served by the agent (loopback only): status, roots, pairing QR page, rescan (L)
 - [ ] Add, remove and disable roots and edit ignore rules at runtime, with a folder picker (config written back, then rescan) (M)
-- [ ] Explicit opt-in for whole-home or whole-drive indexing, with hard exclusions (`/proc`, `/sys`, `/dev`, `/run`, OS system folders) (S)
+- [ ] Explicit opt-in for whole-home or whole-drive indexing, with hard exclusions (`/proc`, `/sys`, `/dev`, `/run`, OS system folders) (S). Measured: the agent uses about 0.5 KB of memory per entry at peak (316k entries = 168 MB), so reduce per-entry memory first (share string memory between Path, Parent and Name, or keep the index in SQLite) before allowing millions of entries
 - [ ] gitignore-style `.ignore` file support (M)
 - [ ] Run in the background and start on login (systemd user unit, Windows startup entry or service, launchd) (M)
 - [ ] System tray icon that opens the web UI (M; may need per-OS build runners)
@@ -138,3 +139,4 @@ Must be finished before any feature that serves file contents.
 - 2026-10-07: Milestone 2, batch A: OS-aware default folders and ignores, hidden files skipped by default (`include_hidden`), `allowed_networks` for VPN use.
 - 2026-10-07: Milestone 2, batch B: Browse tabs (Browse, Recent, Pinned), copy path/name, pinned folders, auto-sync on open, per-folder summary on Home, file-type icons. Fixed the breadcrumbs being cropped on long lists.
 - 2026-10-08: Milestone 2 complete: filters, sort and search scope (names or names and folders) in the app; gzip for `/index`; database schema version 3.
+- 2026-10-08: Milestone 2 complete: `GET /roots`, full PC paths in a new file details sheet, "Copy PC path" for files and folders. Scale test: 316k entries index in 21 s, about 168 MB; gzip makes the 64.5 MB index 4.6 MB.
