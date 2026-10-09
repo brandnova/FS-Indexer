@@ -19,6 +19,8 @@ import { fonts, radius, typography, type TextVariant } from '../theme/tokens';
 export { ThemeProvider, useTheme, useThemedStyles } from '../theme/ThemeProvider';
 export { fonts, radius, space } from '../theme/tokens';
 export type { Palette, TextVariant } from '../theme/tokens';
+export { FadeIn } from './FadeIn';
+export { SkeletonRows } from './Skeleton';
 
 // ---------- text ----------
 
@@ -29,9 +31,11 @@ interface AppTextProps extends TextProps {
   tone?: Tone;
 }
 
-export function Text({ variant = 'body', tone = 'text', style, ...rest }: AppTextProps) {
+export function Text({ variant = 'body', tone = 'text', style, accessibilityRole, ...rest }: AppTextProps) {
   const { colors } = useTheme();
-  return <RNText {...rest} style={[typography[variant], { color: colors[tone] }, style]} />;
+  // Big titles are headings for screen readers unless told otherwise.
+  const role = accessibilityRole ?? (variant === 'display' || variant === 'title' ? 'header' : undefined);
+  return <RNText {...rest} accessibilityRole={role} style={[typography[variant], { color: colors[tone] }, style]} />;
 }
 
 // ---------- buttons ----------
@@ -61,9 +65,12 @@ export function Button({ title, onPress, variant = 'primary', size = 'md', icon:
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
+      hitSlop={small ? 4 : 0}
       accessibilityRole="button"
       accessibilityLabel={title}
+      accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
       style={({ pressed }) => ({
+        minHeight: small ? 40 : 48,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -72,7 +79,7 @@ export function Button({ title, onPress, variant = 'primary', size = 'md', icon:
         borderWidth: 1,
         backgroundColor: look.bg,
         borderColor: look.border,
-        paddingVertical: small ? 9 : 14,
+        paddingVertical: small ? 8 : 12,
         paddingHorizontal: small ? 14 : 18,
         opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
       })}
@@ -97,7 +104,7 @@ export function IconButton({
 }: {
   icon: LucideIcon;
   onPress: () => void;
-  label: string;
+  label: string; // read out by screen readers
   color?: string;
   size?: number;
   badge?: boolean;
@@ -106,18 +113,18 @@ export function IconButton({
   return (
     <Pressable
       onPress={onPress}
-      hitSlop={6}
+      hitSlop={4}
       accessibilityRole="button"
-      accessibilityLabel={label}
-      style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20 }}
+      accessibilityLabel={badge ? `${label}, active` : label}
+      style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22 }}
     >
       <Icon size={size} color={color ?? colors.muted} />
       {badge ? (
         <View
           style={{
             position: 'absolute',
-            top: 8,
-            right: 8,
+            top: 9,
+            right: 9,
             width: 9,
             height: 9,
             borderRadius: 5,
@@ -152,10 +159,12 @@ export function Chip({ label, active, onPress }: { label: string; active: boolea
   return (
     <Pressable
       onPress={onPress}
+      hitSlop={4}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       style={{
-        paddingVertical: 8,
+        minHeight: 40,
+        justifyContent: 'center',
         paddingHorizontal: 14,
         borderRadius: radius.pill,
         borderWidth: 1,
@@ -172,7 +181,11 @@ export function ProgressBar({ value }: { value: number }) {
   const { colors } = useTheme();
   const pct = Math.max(0, Math.min(100, value));
   return (
-    <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.surfaceAlt, overflow: 'hidden' }}>
+    <View
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: 100, now: Math.round(pct) }}
+      style={{ height: 8, borderRadius: 4, backgroundColor: colors.surfaceAlt, overflow: 'hidden' }}
+    >
       <View style={{ width: `${pct}%`, height: 8, backgroundColor: colors.primary }} />
     </View>
   );
@@ -188,6 +201,8 @@ export function StatusChip({ kind, label }: { kind: 'ok' | 'bad' | 'idle'; label
 
   return (
     <View
+      accessible
+      accessibilityLabel={`Status: ${label}`}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -227,11 +242,11 @@ export function SegmentedControl<T extends string>({
             accessibilityState={{ selected: active }}
             style={{
               flex: 1,
+              minHeight: 40,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 6,
-              paddingVertical: 9,
               borderRadius: radius.sm + 2,
               backgroundColor: active ? colors.surface : 'transparent',
               borderWidth: active ? 1 : 0,
@@ -270,11 +285,13 @@ export function ActionRow({
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
       style={({ pressed }) => ({
+        minHeight: 56,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        paddingVertical: 10,
+        paddingVertical: 8,
         opacity: pressed ? 0.7 : 1,
       })}
     >
@@ -314,6 +331,8 @@ export function EmptyState({
   return (
     <View style={{ alignItems: 'center', paddingHorizontal: 32, paddingVertical: 40, gap: 10 }}>
       <View
+        importantForAccessibility="no-hide-descendants"
+        accessibilityElementsHidden
         style={{
           width: 72,
           height: 72,
@@ -347,6 +366,8 @@ export function Toast({ message }: { message: string | null }) {
   return (
     <View
       pointerEvents="none"
+      accessibilityLiveRegion="polite"
+      accessibilityRole="alert"
       style={{ position: 'absolute', left: 0, right: 0, bottom: insets.bottom + 84, alignItems: 'center' }}
     >
       <View
@@ -384,8 +405,14 @@ export function Sheet({
   return (
     <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay }}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+        />
         <View
+          accessibilityViewIsModal
           style={{
             maxHeight: '88%',
             backgroundColor: colors.surface,
@@ -400,6 +427,7 @@ export function Sheet({
           />
           {title ? (
             <RNText
+              accessibilityRole="header"
               numberOfLines={2}
               style={[typography.title, { color: colors.text, paddingHorizontal: 20, marginBottom: 8 }]}
             >

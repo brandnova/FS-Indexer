@@ -1,5 +1,5 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { ChevronRight, Folder, Monitor, QrCode, X } from 'lucide-react-native';
+import { ChevronRight, Folder, Monitor, QrCode, Sparkles, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { ApiError, toApiError } from '../api/client';
@@ -11,9 +11,10 @@ import { Button, Card, Text, fonts, radius, useTheme, useThemedStyles, type Pale
 
 interface Props {
   onPaired: (info: PairingInfo) => void;
+  onDemo: () => void;
 }
 
-export default function PairScreen({ onPaired }: Props) {
+export default function PairScreen({ onPaired, onDemo }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
 
@@ -93,7 +94,7 @@ export default function PairScreen({ onPaired }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-      <View style={styles.brand}>
+      <View style={styles.brand} importantForAccessibility="no-hide-descendants">
         <Folder size={34} color={colors.folder} />
       </View>
 
@@ -117,7 +118,7 @@ export default function PairScreen({ onPaired }: Props) {
 
       {discoverySupported ? (
         <View style={styles.nearby}>
-          <Text variant="label" tone="muted">
+          <Text variant="label" tone="muted" accessibilityRole="header">
             NEARBY PCS
           </Text>
           {nearby.length === 0 ? (
@@ -133,6 +134,8 @@ export default function PairScreen({ onPaired }: Props) {
                 key={d.id}
                 style={styles.nearbyRow}
                 disabled={busy}
+                accessibilityRole="button"
+                accessibilityLabel={`${d.name}. Tap, then scan the QR code it shows`}
                 onPress={() => {
                   setError(null);
                   setExpected(d);
@@ -172,6 +175,7 @@ export default function PairScreen({ onPaired }: Props) {
             onChangeText={setAddress}
             placeholder="192.168.1.23:8080"
             placeholderTextColor={colors.muted}
+            accessibilityLabel="PC address"
             autoCapitalize="none"
             autoCorrect={false}
             editable={!busy}
@@ -185,6 +189,7 @@ export default function PairScreen({ onPaired }: Props) {
             onChangeText={setToken}
             placeholder="The token shown by the agent"
             placeholderTextColor={colors.muted}
+            accessibilityLabel="Token"
             autoCapitalize="none"
             autoCorrect={false}
             editable={!busy}
@@ -194,7 +199,7 @@ export default function PairScreen({ onPaired }: Props) {
       ) : null}
 
       {errorText ? (
-        <View style={styles.errorBox}>
+        <View style={styles.errorBox} accessibilityLiveRegion="polite">
           <Text tone="danger">{errorText}</Text>
         </View>
       ) : null}
@@ -207,6 +212,13 @@ export default function PairScreen({ onPaired }: Props) {
       ) : null}
 
       {busy && !showManual ? <ActivityIndicator color={colors.primary} /> : null}
+
+      <View style={styles.demoBox}>
+        <Text variant="caption" tone="muted" style={styles.centered}>
+          No PC handy? Look around with some sample files first.
+        </Text>
+        <Button title="Try the demo" variant="tonal" icon={Sparkles} disabled={busy} onPress={onDemo} />
+      </View>
     </ScrollView>
   );
 }
@@ -236,10 +248,10 @@ function Scanner({
   if (!permission.granted) {
     return (
       <View style={styles.center}>
-        <Text variant="title" style={styles.centerText}>
+        <Text variant="title" style={styles.centered}>
           Camera access needed
         </Text>
-        <Text tone="muted" style={styles.centerText}>
+        <Text tone="muted" style={styles.centered}>
           The camera is only used to scan the pairing QR code. Nothing is saved or sent anywhere.
         </Text>
         <View style={styles.centerButtons}>
@@ -276,6 +288,7 @@ const makeStyles = (c: Palette) =>
   StyleSheet.create({
     content: { padding: 24, paddingBottom: 40, gap: 18 },
     flex: { flex: 1 },
+    centered: { textAlign: 'center' },
     brand: {
       width: 72,
       height: 72,
@@ -301,19 +314,20 @@ const makeStyles = (c: Palette) =>
     nearbyIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySoft },
     manual: { gap: 10 },
     input: {
+      minHeight: 48,
       borderWidth: 1,
       borderColor: c.border,
       backgroundColor: c.bg,
       borderRadius: radius.md,
       paddingHorizontal: 14,
-      paddingVertical: 12,
+      paddingVertical: 10,
       fontSize: 15,
       fontFamily: fonts.regular,
       color: c.text,
     },
     errorBox: { padding: 14, borderRadius: radius.md, backgroundColor: c.dangerSoft },
+    demoBox: { gap: 10, marginTop: 8 },
     center: { flex: 1, padding: 24, justifyContent: 'center', gap: 14 },
-    centerText: { textAlign: 'center' },
     centerButtons: { gap: 10, marginTop: 8 },
     scanner: { flex: 1, backgroundColor: '#000' },
     scanFooter: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 24, gap: 14, backgroundColor: 'rgba(0,0,0,0.6)' },

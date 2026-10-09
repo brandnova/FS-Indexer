@@ -21,6 +21,7 @@ export interface PairingInfo extends Candidate {
   v: 1;
   id: string;
   name: string;
+  demo?: boolean; // true while exploring the built-in sample files (no PC involved)
 }
 
 export interface PingResponse {

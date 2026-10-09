@@ -1,12 +1,12 @@
 import { Clock, Pin, SlidersHorizontal } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useActions } from '../actions';
 import { FileListRow, ROW_HEIGHT, subtitleFor } from '../components/FileRow';
 import { hasFileFilters, listPinned, listRecent, type FileRow } from '../db/queries';
 import { DEFAULT_FILTERS, activeCount, describe } from '../filters';
 import { useSession } from '../session';
-import { EmptyState, IconButton, Text, radius, useTheme, useThemedStyles, type Palette } from '../ui';
+import { EmptyState, IconButton, SkeletonRows, Text, radius, useTheme, useThemedStyles, type Palette } from '../ui';
 
 interface Props {
   kind: 'recent' | 'pinned';
@@ -68,7 +68,7 @@ export default function ListScreen({ kind, onOpenFolder }: Props) {
           <Text variant="caption" tone="primary" numberOfLines={1} style={styles.flex}>
             {describe(filters)}
           </Text>
-          <Pressable onPress={() => setFilters(DEFAULT_FILTERS)} hitSlop={10}>
+          <Pressable onPress={() => setFilters(DEFAULT_FILTERS)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Clear filters">
             <Text variant="label" tone="primary">
               Clear
             </Text>
@@ -76,7 +76,7 @@ export default function ListScreen({ kind, onOpenFolder }: Props) {
         </View>
       ) : null}
 
-      {loading ? <ActivityIndicator style={styles.spinner} color={colors.primary} /> : null}
+      {loading && rows.length === 0 ? <SkeletonRows /> : null}
 
       {!loading && rows.length === 0 ? (
         recent ? (
@@ -133,6 +133,5 @@ const makeStyles = (c: Palette) =>
       borderRadius: radius.md,
       backgroundColor: c.primarySoft,
     },
-    spinner: { marginVertical: 12 },
     list: { flex: 1 },
   });

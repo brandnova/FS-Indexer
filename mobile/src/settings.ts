@@ -3,6 +3,7 @@ import { getMeta, setMeta } from './db';
 // Keys starting with "setting:" survive unpairing (see clearIndex in db/index.ts).
 const AUTO_SYNC_KEY = 'setting:auto_sync';
 const THEME_KEY = 'setting:theme';
+const ONBOARDED_KEY = 'setting:onboarded';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -22,4 +23,13 @@ export async function getThemeMode(): Promise<ThemeMode> {
 
 export async function setThemeMode(mode: ThemeMode): Promise<void> {
   await setMeta(THEME_KEY, mode);
+}
+
+/** Has the first-run walkthrough been seen (or skipped)? */
+export async function getOnboarded(): Promise<boolean> {
+  return (await getMeta(ONBOARDED_KEY)) === '1';
+}
+
+export async function markOnboarded(): Promise<void> {
+  await setMeta(ONBOARDED_KEY, '1');
 }

@@ -25,10 +25,20 @@ import {
   type FileRow,
 } from '../db/queries';
 import { DEFAULT_FILTERS, activeCount, describe } from '../filters';
-import { fonts, radius } from '../theme/tokens';
 import { useDebounced } from '../hooks';
 import { useSession } from '../session';
-import { ActionRow, EmptyState, IconButton, Sheet, Text, useTheme, useThemedStyles, type Palette } from '../ui';
+import { fonts, radius } from '../theme/tokens';
+import {
+  ActionRow,
+  EmptyState,
+  IconButton,
+  Sheet,
+  SkeletonRows,
+  Text,
+  useTheme,
+  useThemedStyles,
+  type Palette,
+} from '../ui';
 
 export interface FilesHandle {
   /** Handles the Android back button inside this screen. Returns true if it did something. */
@@ -40,6 +50,8 @@ interface Props {
   onPathChange: (path: string) => void;
   focusKey: number; // changes when something wants the search box focused
 }
+
+type EmptyProps = Parameters<typeof EmptyState>[0];
 
 function parentOf(path: string): string {
   const idx = path.lastIndexOf('/');
@@ -180,7 +192,7 @@ const FilesScreen = forwardRef<FilesHandle, Props>(function FilesScreen({ path, 
   const mode = searchActive ? 'search' : 'browse';
   const filtersOn = hasFileFilters(spec);
 
-  let empty: ReactEmpty | null = null;
+  let empty: EmptyProps | null = null;
   if (!loading && !searching && data.length === 0) {
     if (searchActive) {
       empty = { icon: SearchX, title: `No results for "${query.trim()}"`, message: 'Try fewer or different words.' };
@@ -214,6 +226,7 @@ const FilesScreen = forwardRef<FilesHandle, Props>(function FilesScreen({ path, 
             onChangeText={setQuery}
             placeholder="Search your files"
             placeholderTextColor={colors.muted}
+            accessibilityLabel="Search your files"
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
@@ -238,7 +251,7 @@ const FilesScreen = forwardRef<FilesHandle, Props>(function FilesScreen({ path, 
           <Text variant="caption" tone="primary" numberOfLines={1} style={styles.flex}>
             {describe(filters)}
           </Text>
-          <Pressable onPress={() => setFilters(DEFAULT_FILTERS)} hitSlop={10}>
+          <Pressable onPress={() => setFilters(DEFAULT_FILTERS)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Clear filters">
             <Text variant="label" tone="primary">
               Clear
             </Text>
@@ -247,7 +260,7 @@ const FilesScreen = forwardRef<FilesHandle, Props>(function FilesScreen({ path, 
       ) : null}
 
       {searchActive ? (
-        <Text variant="caption" tone="muted" style={styles.caption}>
+        <Text variant="caption" tone="muted" style={styles.caption} accessibilityLiveRegion="polite">
           {searching
             ? 'Searching...'
             : `${data.length}${data.length >= SEARCH_LIMIT ? '+' : ''} result${data.length === 1 ? '' : 's'}`}
@@ -261,7 +274,13 @@ const FilesScreen = forwardRef<FilesHandle, Props>(function FilesScreen({ path, 
           contentContainerStyle={styles.crumbs}
           onContentSizeChange={() => crumbsRef.current?.scrollToEnd({ animated: true })}
         >
-          <Pressable onPress={() => onPathChange('')} hitSlop={8} style={styles.crumbItem}>
+          <Pressable
+            onPress={() => onPathChange('')}
+            hitSlop={8}
+            style={styles.crumbItem}
+            accessibilityRole="button"
+            accessibilityLabel={`${session.pairing.name}, all folders`}
+          >
             <House size={16} color={path === '' ? colors.text : colors.muted} />
             <Text variant="label" tone={path === '' ? 'text' : 'muted'}>
               {session.pairing.name}
@@ -270,7 +289,12 @@ const FilesScreen = forwardRef<FilesHandle, Props>(function FilesScreen({ path, 
           {segments.map((label, i) => (
             <View key={segments.slice(0, i + 1).join('/')} style={styles.crumbItem}>
               <ChevronRight size={14} color={colors.muted} />
-              <Pressable onPress={() => onPathChange(segments.slice(0, i + 1).join('/'))} hitSlop={8}>
+              <Pressable
+                onPress={() => onPathChange(segments.slice(0, i + 1).join('/'))}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+              >
                 <Text variant="label" tone={i === segments.length - 1 ? 'text' : 'muted'}>
                   {label}
                 </Text>
@@ -280,7 +304,8 @@ const FilesScreen = forwardRef<FilesHandle, Props>(function FilesScreen({ path, 
         </ScrollView>
       )}
 
-      {loading || searching ? <ActivityIndicator style={styles.spinner} color={colors.primary} /> : null}
+      {searching ? <ActivityIndicator style={styles.spinner} color={colors.primary} /> : null}
+      {loading && !searchActive && rows.length === 0 ? <SkeletonRows /> : null}
 
       {empty ? <EmptyState {...empty} /> : null}
 
@@ -320,8 +345,6 @@ const FilesScreen = forwardRef<FilesHandle, Props>(function FilesScreen({ path, 
     </View>
   );
 });
-
-type ReactEmpty = Parameters<typeof EmptyState>[0];
 
 export default FilesScreen;
 

@@ -21,6 +21,8 @@ export interface Palette {
 }
 
 // Soft solid colours taken from the app icon: navy, amber folder, blue laptop, green phone.
+// The text colours (primary, success, danger, warning) are chosen to keep a contrast ratio
+// of at least 4.5:1 on both white and their own soft background.
 export const light: Palette = {
   bg: '#F5F7FB',
   surface: '#FFFFFF',
@@ -28,16 +30,16 @@ export const light: Palette = {
   text: '#14213D',
   muted: '#5B678A',
   border: '#E2E7F1',
-  primary: '#2F66E0',
+  primary: '#2A5FD6',
   onPrimary: '#FFFFFF',
   primarySoft: '#E6EDFC',
   folder: '#F5A524',
   folderSoft: '#FFF1D6',
-  success: '#1B9A6C',
+  success: '#157A55',
   successSoft: '#E0F4EB',
-  warning: '#B7791F',
+  warning: '#8A5A0B',
   warningSoft: '#FFF3DB',
-  danger: '#D14343',
+  danger: '#B83232',
   dangerSoft: '#FCE8E8',
   overlay: 'rgba(11,18,48,0.45)',
   navy: '#0B1230',

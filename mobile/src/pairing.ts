@@ -17,6 +17,10 @@ export async function loadPairing(): Promise<PairingInfo | null> {
   }
 }
 
+export async function savePairing(info: PairingInfo): Promise<void> {
+  await SecureStore.setItemAsync(KEY, JSON.stringify(info));
+}
+
 /** Verifies the PC answers with this token, then saves the pairing. */
 export async function pairWith(c: Candidate): Promise<PairingInfo> {
   const res = await ping(c);
@@ -30,13 +34,13 @@ export async function pairWith(c: Candidate): Promise<PairingInfo> {
     name: res.name,
   };
 
-  // A different PC means the old index is meaningless.
+  // A different PC (or leftover demo data) means the old index is meaningless.
   const previous = await loadPairing();
   if (previous && previous.id !== info.id) {
     await clearIndex();
   }
 
-  await SecureStore.setItemAsync(KEY, JSON.stringify(info));
+  await savePairing(info);
   return info;
 }
 
@@ -51,6 +55,8 @@ export async function unpair(): Promise<void> {
  * Returns null if it can't be found.
  */
 export async function relocate(current: PairingInfo): Promise<PairingInfo | null> {
+  if (current.demo) return null; // the demo has no PC to find
+
   const device = await findDevice(current.id);
   if (!device) return null;
 
@@ -58,7 +64,7 @@ export async function relocate(current: PairingInfo): Promise<PairingInfo | null
   if (!host) return null;
 
   const updated: PairingInfo = { ...current, host, port: device.port };
-  await SecureStore.setItemAsync(KEY, JSON.stringify(updated));
+  await savePairing(updated);
   return updated;
 }
 

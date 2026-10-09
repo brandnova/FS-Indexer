@@ -92,10 +92,11 @@ Small features that fit the project's core job of finding your files from your p
 - [x] Settings screen with connection, update options, help, about and Unpair (new)
 - [x] Dark mode (Settings, Appearance) (new)
 - [x] Cancel button and a time-left estimate for long updates (new)
-- [ ] Loading skeletons, small animations and an accessibility pass (M)
-- [ ] First-run walkthrough (S) (new)
+- [x] First-run walkthrough, shown once (new)
+- [x] Demo mode with a bundled sample index, reachable from the walkthrough and the pairing screen (new)
+- [x] Accessibility pass: AA contrast, 44 dp touch targets, screen-reader labels, roles and announcements, capped text scaling on fixed-height rows, reduced motion (new)
+- [x] Loading placeholders and gentle fade-ins (new)
 - [ ] General UI/UX optimization for the agent (clearer terminal output and startup banner, friendlier errors, config helpers) (M)
-- [ ] Demo mode with a bundled sample index (M) (new)
 
 ### Milestone 4: Agent management
 - [ ] Local web UI served by the agent (loopback only): status, roots, pairing QR page, rescan (L)
@@ -149,3 +150,4 @@ Must be finished before any feature that serves file contents.
 - 2026-10-08: Milestone 2 complete: filters, sort and search scope (names or names and folders) in the app; gzip for `/index`; database schema version 3.
 - 2026-10-08: Milestone 2 complete: `GET /roots`, full PC paths in a new file details sheet, "Copy PC path" for files and folders. Scale test: 316k entries index in 21 s, about 168 MB; gzip makes the 64.5 MB index 4.6 MB.
 - 2026-10-08: Milestone 3, batch A: new design system, navigation and screens; dark mode; cancellable updates with a time estimate; `scripts/cross-build.sh`.
+- 2026-10-09: Milestone 3, batch B: first-run walkthrough, demo mode, accessibility pass (contrast, touch targets, screen-reader support, text scaling, reduced motion), loading placeholders.

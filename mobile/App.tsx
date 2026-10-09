@@ -11,6 +11,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { ActionsProvider } from './src/actions';
 import TabBar, { type TabKey } from './src/components/TabBar';
 import { getDb } from './src/db';
+import { startDemo } from './src/demo';
 import { useKeyboardVisible } from './src/hooks';
 import { loadPairing } from './src/pairing';
 import { refreshPcRoots } from './src/pcPaths';
@@ -19,8 +20,9 @@ import HomeScreen from './src/screens/HomeScreen';
 import ListScreen from './src/screens/ListScreen';
 import PairScreen from './src/screens/PairScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import WelcomeScreen from './src/screens/WelcomeScreen';
 import { SessionProvider, useSession } from './src/session';
-import { getThemeMode, type ThemeMode } from './src/settings';
+import { getOnboarded, getThemeMode, markOnboarded, type ThemeMode } from './src/settings';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 import type { PairingInfo } from './src/types';
 
@@ -54,18 +56,62 @@ function Root() {
 
   // undefined = still loading, null = not paired
   const [pairing, setPairing] = useState<PairingInfo | null | undefined>(undefined);
+  const [onboarded, setOnboarded] = useState<boolean | null>(null);
 
   useEffect(() => {
-    loadPairing()
-      .then(setPairing)
-      .catch(() => setPairing(null));
+    (async () => {
+      const [saved, seen] = await Promise.all([
+        loadPairing().catch(() => null),
+        getOnboarded().catch(() => true),
+      ]);
+      // Someone who is already paired has no need for the walkthrough later.
+      if (saved && !seen) void markOnboarded();
+      setOnboarded(seen || saved !== null);
+      setPairing(saved);
+    })();
     getDb().catch((e) => console.error('Database failed to open', e));
   }, []);
 
   // Learn where the PC's folders live (for "Copy PC path"). Quietly does nothing if the PC is offline.
   useEffect(() => {
-    if (pairing) void refreshPcRoots(pairing);
+    if (pairing && !pairing.demo) void refreshPcRoots(pairing);
   }, [pairing]);
+
+  const finishWelcome = useCallback(() => {
+    void markOnboarded();
+    setOnboarded(true);
+  }, []);
+
+  const enterDemo = useCallback(async () => {
+    try {
+      void markOnboarded();
+      setOnboarded(true);
+      setPairing(await startDemo());
+    } catch (e) {
+      console.error('Could not start the demo', e);
+    }
+  }, []);
+
+  let content;
+  if (pairing === undefined || onboarded === null) {
+    content = (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  } else if (pairing === null) {
+    content = onboarded ? (
+      <PairScreen onPaired={setPairing} onDemo={() => void enterDemo()} />
+    ) : (
+      <WelcomeScreen onContinue={finishWelcome} onDemo={() => void enterDemo()} />
+    );
+  } else {
+    content = (
+      <SessionProvider pairing={pairing} onRelocated={setPairing}>
+        <Shell onUnpaired={() => setPairing(null)} />
+      </SessionProvider>
+    );
+  }
 
   return (
     <View
@@ -77,17 +123,7 @@ function Root() {
       }}
     >
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      {pairing === undefined ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={colors.primary} />
-        </View>
-      ) : pairing === null ? (
-        <PairScreen onPaired={setPairing} />
-      ) : (
-        <SessionProvider pairing={pairing} onRelocated={setPairing}>
-          <Shell onUnpaired={() => setPairing(null)} />
-        </SessionProvider>
-      )}
+      {content}
     </View>
   );
 }
@@ -147,7 +183,12 @@ function Tabs({ onUnpaired }: { onUnpaired: () => void }) {
     <View style={{ flex: 1 }}>
       <View style={{ flex: 1 }}>
         <View style={layer('home')}>
-          <HomeScreen onSearch={startSearch} onOpenFolder={openFolder} onSeeAllRecent={() => go('recent')} />
+          <HomeScreen
+            onSearch={startSearch}
+            onOpenFolder={openFolder}
+            onSeeAllRecent={() => go('recent')}
+            onExitDemo={onUnpaired}
+          />
         </View>
         {visited.has('files') ? (
           <View style={layer('files')}>

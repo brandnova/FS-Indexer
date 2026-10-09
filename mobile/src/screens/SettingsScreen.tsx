@@ -14,6 +14,12 @@ export default function SettingsScreen({ onUnpaired }: { onUnpaired: () => void 
   const { mode, setMode, colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const online = s.remote !== null;
+  const demo = s.pairing.demo === true;
+
+  async function leave() {
+    await unpair();
+    onUnpaired();
+  }
 
   function confirmUnpair() {
     Alert.alert(
@@ -21,14 +27,7 @@ export default function SettingsScreen({ onUnpaired }: { onUnpaired: () => void 
       'The saved connection, the file list on this phone and your pinned folders will be deleted. Nothing on your PC changes.',
       [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Unpair',
-          style: 'destructive',
-          onPress: async () => {
-            await unpair();
-            onUnpaired();
-          },
-        },
+        { text: 'Unpair', style: 'destructive', onPress: () => void leave() },
       ],
     );
   }
@@ -37,28 +36,37 @@ export default function SettingsScreen({ onUnpaired }: { onUnpaired: () => void 
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <Text variant="title">Settings</Text>
 
-      <Section title="Your PC">
-        <Card style={styles.cardGap}>
-          <View style={styles.pcRow}>
-            <View style={styles.pcIcon}>
-              <Monitor size={22} color={colors.primary} />
+      {demo ? (
+        <Section title="Demo">
+          <Card style={styles.cardGap}>
+            <Text>You're exploring sample files stored on this phone. Nothing is connected to a real PC.</Text>
+            <Button title="Connect my own PC" icon={Monitor} onPress={() => void leave()} />
+          </Card>
+        </Section>
+      ) : (
+        <Section title="Your PC">
+          <Card style={styles.cardGap}>
+            <View style={styles.pcRow}>
+              <View style={styles.pcIcon}>
+                <Monitor size={22} color={colors.primary} />
+              </View>
+              <View style={styles.flex}>
+                <Text variant="heading" numberOfLines={1}>
+                  {s.pairing.name}
+                </Text>
+                <Text variant="caption" tone="muted">
+                  {s.pairing.host}:{s.pairing.port}
+                </Text>
+              </View>
+              <StatusChip
+                kind={s.checking ? 'idle' : online ? 'ok' : 'bad'}
+                label={s.checking ? 'Checking' : online ? 'Connected' : 'Offline'}
+              />
             </View>
-            <View style={styles.flex}>
-              <Text variant="heading" numberOfLines={1}>
-                {s.pairing.name}
-              </Text>
-              <Text variant="caption" tone="muted">
-                {s.pairing.host}:{s.pairing.port}
-              </Text>
-            </View>
-            <StatusChip
-              kind={s.checking ? 'idle' : online ? 'ok' : 'bad'}
-              label={s.checking ? 'Checking' : online ? 'Connected' : 'Offline'}
-            />
-          </View>
-          <Button title="Check connection" icon={Wifi} variant="secondary" loading={s.checking} onPress={() => void s.check()} />
-        </Card>
-      </Section>
+            <Button title="Check connection" icon={Wifi} variant="secondary" loading={s.checking} onPress={() => void s.check()} />
+          </Card>
+        </Section>
+      )}
 
       <Section title="Updates">
         <Card style={styles.cardGap}>
@@ -72,6 +80,7 @@ export default function SettingsScreen({ onUnpaired }: { onUnpaired: () => void 
             <Switch
               value={s.autoSyncOn}
               onValueChange={s.setAutoSyncOn}
+              accessibilityLabel="Update when I open the app"
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor="#FFFFFF"
             />
@@ -81,7 +90,7 @@ export default function SettingsScreen({ onUnpaired }: { onUnpaired: () => void 
 
           <InfoRow label="Last updated" value={s.lastSynced ? formatRelative(s.lastSynced) : 'never'} />
           <InfoRow label="Files on this phone" value={s.localCount === null ? '...' : s.localCount.toLocaleString()} />
-          {s.remote ? <InfoRow label="Files on your PC" value={s.remote.file_count.toLocaleString()} /> : null}
+          {s.remote && !demo ? <InfoRow label="Files on your PC" value={s.remote.file_count.toLocaleString()} /> : null}
 
           <ActionRow
             icon={Download}
@@ -105,26 +114,32 @@ export default function SettingsScreen({ onUnpaired }: { onUnpaired: () => void 
         </Card>
       </Section>
 
-      <Section title="Can't connect?">
-        <Card style={styles.cardGap}>
-          <Text>{platform.connectionHelp}</Text>
-          <Button
-            title="Open network settings"
-            icon={SettingsIcon}
-            variant="secondary"
-            onPress={() => void platform.openNetworkSettings()}
-          />
-        </Card>
-      </Section>
+      {demo ? null : (
+        <Section title="Can't connect?">
+          <Card style={styles.cardGap}>
+            <Text>{platform.connectionHelp}</Text>
+            <Button
+              title="Open network settings"
+              icon={SettingsIcon}
+              variant="secondary"
+              onPress={() => void platform.openNetworkSettings()}
+            />
+          </Card>
+        </Section>
+      )}
 
       <Section title="About">
         <Card style={styles.cardGap}>
           <InfoRow label="App version" value={Constants.expoConfig?.version ?? '-'} />
-          <InfoRow label="Agent version" value={s.remote?.version ?? '-'} />
+          {demo ? null : <InfoRow label="Agent version" value={s.remote?.version ?? '-'} />}
         </Card>
       </Section>
 
-      <Button title="Unpair this PC" icon={Unlink} variant="danger" onPress={confirmUnpair} />
+      {demo ? (
+        <Button title="Exit the demo" icon={Unlink} variant="danger" onPress={() => void leave()} />
+      ) : (
+        <Button title="Unpair this PC" icon={Unlink} variant="danger" onPress={confirmUnpair} />
+      )}
     </ScrollView>
   );
 }
@@ -132,7 +147,7 @@ export default function SettingsScreen({ onUnpaired }: { onUnpaired: () => void 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View style={{ gap: 8 }}>
-      <Text variant="label" tone="muted">
+      <Text variant="label" tone="muted" accessibilityRole="header">
         {title.toUpperCase()}
       </Text>
       {children}
@@ -142,7 +157,11 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+    <View
+      accessible
+      accessibilityLabel={`${label}: ${value}`}
+      style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}
+    >
       <Text tone="muted">{label}</Text>
       <Text variant="bodyStrong">{value}</Text>
     </View>

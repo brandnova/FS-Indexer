@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Keyboard } from 'react-native';
+import { AccessibilityInfo, Keyboard } from 'react-native';
 
 /** Returns `value`, but only after it has stopped changing for `delayMs`. */
 export function useDebounced<T>(value: T, delayMs: number): T {
@@ -51,4 +51,23 @@ export function useKeyboardVisible(): boolean {
   }, []);
 
   return visible;
+}
+
+/** True when the person turned on "Remove animations" / "Reduce motion" in their phone settings. */
+export function useReduceMotion(): boolean {
+  const [reduce, setReduce] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (mounted) setReduce(enabled);
+    });
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduce);
+    return () => {
+      mounted = false;
+      sub.remove();
+    };
+  }, []);
+
+  return reduce;
 }

@@ -1,19 +1,21 @@
-import { Check, ChevronRight, Folder, RefreshCw, Search, WifiOff, type LucideIcon } from 'lucide-react-native';
+import { Check, ChevronRight, Folder, RefreshCw, Search, Sparkles, WifiOff, type LucideIcon } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useActions } from '../actions';
 import { FileListRow, subtitleFor } from '../components/FileRow';
 import { listRecent, type FileRow } from '../db/queries';
 import { formatRelative, formatSize } from '../format';
+import { unpair } from '../pairing';
 import { platform } from '../platform';
 import { useSession } from '../session';
 import type { SyncProgress } from '../sync';
-import { Button, Card, ProgressBar, StatusChip, Text, radius, useTheme, useThemedStyles, type Palette } from '../ui';
+import { Button, Card, FadeIn, ProgressBar, StatusChip, Text, radius, useTheme, useThemedStyles, type Palette } from '../ui';
 
 interface Props {
   onSearch: () => void;
   onOpenFolder: (path: string) => void;
   onSeeAllRecent: () => void;
+  onExitDemo: () => void;
 }
 
 const SCREEN_PAD = 20;
@@ -31,7 +33,7 @@ function progressText(p: SyncProgress | null): string {
   }
 }
 
-export default function HomeScreen({ onSearch, onOpenFolder, onSeeAllRecent }: Props) {
+export default function HomeScreen({ onSearch, onOpenFolder, onSeeAllRecent, onExitDemo }: Props) {
   const s = useSession();
   const { showDetails } = useActions();
   const { colors } = useTheme();
@@ -40,6 +42,7 @@ export default function HomeScreen({ onSearch, onOpenFolder, onSeeAllRecent }: P
 
   const [recent, setRecent] = useState<FileRow[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
+  const demo = s.pairing.demo === true;
 
   useEffect(() => {
     let cancelled = false;
@@ -50,6 +53,11 @@ export default function HomeScreen({ onSearch, onOpenFolder, onSeeAllRecent }: P
       cancelled = true;
     };
   }, [s.dataVersion]);
+
+  async function exitDemo() {
+    await unpair(); // wipes the sample files and the demo pairing
+    onExitDemo();
+  }
 
   const online = s.remote !== null;
   const offline = !online && !s.checking;
@@ -102,57 +110,81 @@ export default function HomeScreen({ onSearch, onOpenFolder, onSeeAllRecent }: P
 
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <Text variant="display" numberOfLines={1}>
-          {s.pairing.name}
-        </Text>
-        <StatusChip
-          kind={s.checking ? 'idle' : online ? 'ok' : 'bad'}
-          label={s.checking ? 'Checking...' : online ? 'Connected' : 'Not connected'}
-        />
-        {s.note ? (
-          <Text variant="caption" tone="muted">
-            {s.note}
+      <FadeIn>
+        <View style={styles.header}>
+          <Text variant="display" numberOfLines={1}>
+            {s.pairing.name}
           </Text>
-        ) : null}
-      </View>
-
-      <Card style={styles.updateCard}>
-        <View style={styles.updateHeader}>
-          <View style={[styles.badge, { backgroundColor: badgeBg }]}>
-            <Icon size={22} color={badgeFg} />
-          </View>
-          <View style={styles.flex}>
-            <Text variant="heading">{title}</Text>
-            <Text variant="caption" tone={captionTone}>
-              {caption}
-            </Text>
-          </View>
-        </View>
-
-        {s.syncing && downloadPct !== null ? <ProgressBar value={downloadPct} /> : null}
-
-        {s.syncing ? (
-          <Button title="Cancel" variant="secondary" size="sm" onPress={s.cancelSync} />
-        ) : offline ? (
-          <View style={styles.buttonRow}>
-            <View style={styles.flex}>
-              <Button title="Try again" size="sm" loading={s.checking} onPress={() => void s.check()} />
-            </View>
-            <View style={styles.flex}>
-              <Button title={helpOpen ? 'Hide help' : 'Help'} variant="tonal" size="sm" onPress={() => setHelpOpen((v) => !v)} />
-            </View>
-          </View>
-        ) : (
-          <Button
-            title={s.lastSynced === null ? 'Update now' : 'Update'}
-            variant={needsUpdate ? 'primary' : 'tonal'}
-            icon={RefreshCw}
-            disabled={!online}
-            onPress={() => void s.runSync({ rescan: true })}
+          <StatusChip
+            kind={demo ? 'idle' : s.checking ? 'idle' : online ? 'ok' : 'bad'}
+            label={demo ? 'Demo mode' : s.checking ? 'Checking...' : online ? 'Connected' : 'Not connected'}
           />
-        )}
-      </Card>
+          {s.note ? (
+            <Text variant="caption" tone="muted">
+              {s.note}
+            </Text>
+          ) : null}
+        </View>
+      </FadeIn>
+
+      {demo ? (
+        <FadeIn delay={40}>
+          <Card style={styles.updateCard}>
+            <View style={styles.updateHeader}>
+              <View style={[styles.badge, { backgroundColor: colors.folderSoft }]}>
+                <Sparkles size={22} color={colors.folder} />
+              </View>
+              <View style={styles.flex}>
+                <Text variant="heading">You're exploring a demo</Text>
+                <Text variant="caption" tone="muted">
+                  These are sample files. Connect your own PC to see yours.
+                </Text>
+              </View>
+            </View>
+            <Button title="Connect my PC" variant="tonal" size="sm" onPress={() => void exitDemo()} />
+          </Card>
+        </FadeIn>
+      ) : null}
+
+      <FadeIn delay={60}>
+        <Card style={styles.updateCard}>
+          <View style={styles.updateHeader}>
+            <View style={[styles.badge, { backgroundColor: badgeBg }]}>
+              <Icon size={22} color={badgeFg} />
+            </View>
+            {/* Read out automatically when the update status changes. */}
+            <View style={styles.flex} accessibilityLiveRegion="polite">
+              <Text variant="heading">{title}</Text>
+              <Text variant="caption" tone={captionTone}>
+                {caption}
+              </Text>
+            </View>
+          </View>
+
+          {s.syncing && downloadPct !== null ? <ProgressBar value={downloadPct} /> : null}
+
+          {s.syncing ? (
+            <Button title="Cancel" variant="secondary" size="sm" onPress={s.cancelSync} />
+          ) : offline ? (
+            <View style={styles.buttonRow}>
+              <View style={styles.flex}>
+                <Button title="Try again" size="sm" loading={s.checking} onPress={() => void s.check()} />
+              </View>
+              <View style={styles.flex}>
+                <Button title={helpOpen ? 'Hide help' : 'Help'} variant="tonal" size="sm" onPress={() => setHelpOpen((v) => !v)} />
+              </View>
+            </View>
+          ) : (
+            <Button
+              title={s.lastSynced === null ? 'Update now' : 'Update'}
+              variant={needsUpdate ? 'primary' : 'tonal'}
+              icon={RefreshCw}
+              disabled={!online}
+              onPress={() => void s.runSync({ rescan: true })}
+            />
+          )}
+        </Card>
+      </FadeIn>
 
       {offline && helpOpen ? (
         <Card style={styles.helpCard}>
@@ -166,54 +198,67 @@ export default function HomeScreen({ onSearch, onOpenFolder, onSeeAllRecent }: P
         </Card>
       ) : null}
 
-      <Pressable style={styles.searchPill} onPress={onSearch} accessibilityRole="search" accessibilityLabel="Search your files">
-        <Search size={20} color={colors.muted} />
-        <Text tone="muted">Search your files</Text>
-      </Pressable>
+      <FadeIn delay={120}>
+        <Pressable style={styles.searchPill} onPress={onSearch} accessibilityRole="button" accessibilityLabel="Search your files">
+          <Search size={20} color={colors.muted} />
+          <Text tone="muted">Search your files</Text>
+        </Pressable>
+      </FadeIn>
 
       {s.stats.length > 0 ? (
-        <View style={styles.section}>
-          <Text variant="heading">Your folders</Text>
-          <View style={styles.tiles}>
-            {s.stats.map((stat) => (
-              <Pressable
-                key={stat.root}
-                style={[styles.tile, { width: tileWidth }]}
-                onPress={() => onOpenFolder(stat.root)}
-                accessibilityLabel={`Open ${stat.root}`}
-              >
-                <View style={styles.tileIcon}>
-                  <Folder size={24} color={colors.folder} />
-                </View>
-                <Text variant="bodyStrong" numberOfLines={1}>
-                  {stat.root}
-                </Text>
-                <Text variant="caption" tone="muted" numberOfLines={1}>
-                  {stat.files.toLocaleString()} files · {formatSize(stat.bytes)}
-                </Text>
-              </Pressable>
-            ))}
+        <FadeIn delay={180}>
+          <View style={styles.section}>
+            <Text variant="heading">Your folders</Text>
+            <View style={styles.tiles}>
+              {s.stats.map((stat) => (
+                <Pressable
+                  key={stat.root}
+                  style={[styles.tile, { width: tileWidth }]}
+                  onPress={() => onOpenFolder(stat.root)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${stat.root}, ${stat.files.toLocaleString()} files, ${formatSize(stat.bytes)}`}
+                >
+                  <View style={styles.tileIcon}>
+                    <Folder size={24} color={colors.folder} />
+                  </View>
+                  <Text variant="bodyStrong" numberOfLines={1}>
+                    {stat.root}
+                  </Text>
+                  <Text variant="caption" tone="muted" numberOfLines={1}>
+                    {stat.files.toLocaleString()} files · {formatSize(stat.bytes)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
-        </View>
+        </FadeIn>
       ) : null}
 
       {recent.length > 0 ? (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text variant="heading">Recent files</Text>
-            <Pressable onPress={onSeeAllRecent} hitSlop={10} style={styles.seeAll}>
-              <Text variant="label" tone="primary">
-                See all
-              </Text>
-              <ChevronRight size={16} color={colors.primary} />
-            </Pressable>
+        <FadeIn delay={240}>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text variant="heading">Recent files</Text>
+              <Pressable
+                onPress={onSeeAllRecent}
+                hitSlop={12}
+                style={styles.seeAll}
+                accessibilityRole="button"
+                accessibilityLabel="See all recent files"
+              >
+                <Text variant="label" tone="primary">
+                  See all
+                </Text>
+                <ChevronRight size={16} color={colors.primary} />
+              </Pressable>
+            </View>
+            <Card style={styles.listCard}>
+              {recent.map((row) => (
+                <FileListRow key={row.path} item={row} {...subtitleFor(row, 'recent')} onPress={showDetails} />
+              ))}
+            </Card>
           </View>
-          <Card style={styles.listCard}>
-            {recent.map((row) => (
-              <FileListRow key={row.path} item={row} {...subtitleFor(row, 'recent')} onPress={showDetails} />
-            ))}
-          </Card>
-        </View>
+        </FadeIn>
       ) : null}
     </ScrollView>
   );

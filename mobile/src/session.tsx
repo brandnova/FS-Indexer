@@ -11,6 +11,7 @@ import {
 import { ApiError, ping, toApiError } from './api/client';
 import { countEntries, getMeta } from './db';
 import { rootStats, type RootStat } from './db/queries';
+import { demoPing, simulateDemoUpdate } from './demo';
 import { formatEta } from './format';
 import { relocate } from './pairing';
 import { getAutoSync, setAutoSync } from './settings';
@@ -104,7 +105,7 @@ export function SessionProvider({
     setError(null);
     let result: PingResponse | null = null;
     try {
-      result = await ping(pairing);
+      result = pairing.demo ? await demoPing() : await ping(pairing);
       setRemote(result);
     } catch (e) {
       const err = toApiError(e);
@@ -146,7 +147,7 @@ export function SessionProvider({
   }, []);
 
   const runSync = useCallback(
-    async ({ rescan, auto = false }: { rescan: boolean; auto?: boolean }) => {
+    async ({ rescan }: { rescan: boolean; auto?: boolean }) => {
       if (syncingRef.current) return;
       syncingRef.current = true;
       const controller = new AbortController();
@@ -159,15 +160,17 @@ export function SessionProvider({
       setProgress(null);
       setEta(null);
 
+      const onProgress = (p: SyncProgress) => {
+        setProgress(p);
+        updateEta(p);
+      };
+
       try {
-        await syncFromPc(pairing, {
-          rescan,
-          signal: controller.signal,
-          onProgress: (p) => {
-            setProgress(p);
-            updateEta(p);
-          },
-        });
+        if (pairing.demo) {
+          await simulateDemoUpdate(onProgress, controller.signal);
+        } else {
+          await syncFromPc(pairing, { rescan, signal: controller.signal, onProgress });
+        }
       } catch (e) {
         if (e instanceof SyncCancelled) {
           setSyncMessage('Update cancelled. Your file list may be incomplete until you update again.');
@@ -181,7 +184,6 @@ export function SessionProvider({
       setSyncing(false);
       syncingRef.current = false;
       abortRef.current = null;
-      void auto; // automatic and manual updates behave the same once started
       await check();
       bump();
     },
@@ -200,7 +202,7 @@ export function SessionProvider({
     let cancelled = false;
     (async () => {
       const result = await check();
-      if (cancelled || !result || syncingRef.current) return;
+      if (cancelled || !result || syncingRef.current || pairing.demo) return;
       const plan = await autoSyncPlan(result);
       if (!cancelled && plan.run) await runSync({ rescan: plan.rescan, auto: true });
     })();

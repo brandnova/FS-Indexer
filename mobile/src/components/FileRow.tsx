@@ -39,28 +39,39 @@ export const FileListRow = memo(function FileListRow({ item, subtitle, headEllip
   const styles = useThemedStyles(makeStyles);
   const { Icon, color } = iconFor(item.ext, item.isDir, colors);
 
+  const spoken = item.isDir ? `${item.name}, folder` : subtitle ? `${item.name}, ${subtitle}` : item.name;
+
   return (
     <Pressable
       onPress={() => onPress(item)}
       onLongPress={onLongPress ? () => onLongPress(item) : undefined}
-      accessibilityLabel={item.name}
+      accessibilityRole="button"
+      accessibilityLabel={spoken}
+      accessibilityHint={onLongPress ? 'Press and hold for more options' : undefined}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
-      <View style={[styles.iconBox, { backgroundColor: `${color}22` }]}>
+      <View style={[styles.iconBox, { backgroundColor: `${color}22` }]} importantForAccessibility="no-hide-descendants">
         <Icon size={22} color={color} />
       </View>
       <View style={styles.text}>
-        <Text variant="bodyStrong" numberOfLines={1}>
+        {/* The row has a fixed height, so text scaling is capped to keep big system fonts from clipping it. */}
+        <Text variant="bodyStrong" numberOfLines={1} maxFontSizeMultiplier={1.3}>
           {item.name}
         </Text>
         {subtitle ? (
-          <Text variant="caption" tone="muted" numberOfLines={1} ellipsizeMode={headEllipsis ? 'head' : 'tail'}>
+          <Text
+            variant="caption"
+            tone="muted"
+            numberOfLines={1}
+            ellipsizeMode={headEllipsis ? 'head' : 'tail'}
+            maxFontSizeMultiplier={1.3}
+          >
             {subtitle}
           </Text>
         ) : null}
       </View>
       {onUnpin ? (
-        <Pressable onPress={() => onUnpin(item)} hitSlop={12} accessibilityLabel={`Unpin ${item.name}`}>
+        <Pressable onPress={() => onUnpin(item)} hitSlop={14} accessibilityRole="button" accessibilityLabel={`Unpin ${item.name}`}>
           <PinOff size={18} color={colors.muted} />
         </Pressable>
       ) : item.isDir ? (

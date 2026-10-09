@@ -34,7 +34,14 @@ export default function TabBar({ tab, onChange }: { tab: TabKey; onChange: (tab:
             <View style={[styles.pill, active && styles.pillActive]}>
               <Icon size={22} color={active ? colors.primary : colors.muted} />
             </View>
-            <Text variant="caption" tone={active ? 'primary' : 'muted'} style={active ? styles.labelActive : undefined}>
+            {/* Five labels share one row, so text scaling is capped here. */}
+            <Text
+              variant="caption"
+              tone={active ? 'primary' : 'muted'}
+              maxFontSizeMultiplier={1.2}
+              numberOfLines={1}
+              style={active ? styles.labelActive : undefined}
+            >
               {label}
             </Text>
           </Pressable>
@@ -53,7 +60,7 @@ const makeStyles = (c: Palette) =>
       borderTopColor: c.border,
       paddingTop: 8,
     },
-    item: { flex: 1, alignItems: 'center', gap: 2 },
+    item: { flex: 1, alignItems: 'center', gap: 2, minHeight: 52 },
     pill: { width: 56, height: 30, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
     pillActive: { backgroundColor: c.primarySoft },
     labelActive: { fontFamily: fonts.bold },
