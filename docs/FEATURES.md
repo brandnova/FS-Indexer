@@ -100,8 +100,8 @@ Small features that fit the project's core job of finding your files from your p
 - [x] Agent terminal experience: startup banner, scan summary, activity lines, friendly errors with fixes, colour only where supported; `-quiet`, `-no-qr`, `-no-color`, `-verbose` (M)
 
 ### Milestone 4: Agent management
-- [ ] Local web UI, step 1: dashboard and pairing page on a loopback-only listener (Host/Origin checks, session token, QR in the browser) (M)
-- [ ] Smart double-click: opens the web UI when launched without a terminal, and on first run (M)
+- [x] Local web UI, step 1: dashboard and pairing page on a loopback-only listener (Host/Origin checks, session token, QR in the browser) (M)
+- [x] Smart double-click: opens the web UI when launched without a terminal, and on first run (M)
 - [ ] Folders page: add, remove, disable, per-folder options, folder picker; settings reload without a restart (M)
 - [ ] Ignore-rules editor with a "test a path" box (S)
 - [ ] Start on login (Windows registry, macOS LaunchAgent, Linux autostart or systemd user unit) (M)
@@ -146,6 +146,22 @@ Must be finished before any feature that serves file contents.
 - **Look and feel comes before the stores,** but after the quick wins, so the polish pass covers the final feature set.
 - **Delta sync and the file watcher wait for real numbers.** If the smoke test shows your index syncs in seconds, they may never be worth building.
 
+## Ideas for later (not scheduled)
+
+Good ideas that don't block anything. Pull one into a milestone when it becomes the most useful next thing.
+
+- [ ] System tray / menu-bar icon: Open dashboard, Show pairing code, Pause sharing, Quit (macOS needs cgo, GNOME needs an extension)
+- [ ] Scheduled rescans ("keep my list fresh every 30 minutes")
+- [ ] Pause sharing: one switch that turns phones away until resumed
+- [ ] Private-folder marker: any folder containing a `.nosync` file is skipped automatically
+- [ ] Disk-usage view (biggest folders and file types) in the dashboard and on the phone
+- [ ] Duplicate finder (same name and size candidates)
+- [ ] Per-device approval: "Allow Pixel 8?" the first time a phone connects (builds on per-device tokens)
+- [ ] Update notifier (opt-in check against GitHub releases)
+- [ ] Diagnostics export (version, OS and settings with the token removed) for bug reports
+- [ ] Log viewer in the dashboard, with a rolling log file
+- [ ] "Open in file manager" link per folder
+
 ## Changelog
 
 - 2026-10-05: Phases 1 and 2 complete. Pairing QR display added to the agent (not in the original plan).
@@ -160,3 +176,4 @@ Must be finished before any feature that serves file contents.
 - 2026-10-08: Milestone 3, batch A: new design system, navigation and screens; dark mode; cancellable updates with a time estimate; `scripts/cross-build.sh`.
 - 2026-10-09: Milestone 3, batch B: first-run walkthrough, demo mode, accessibility pass (contrast, touch targets, screen-reader support, text scaling, reduced motion), loading placeholders.
 - 2026-10-09: Milestone 3 complete: "About the agent" screen; agent startup banner, activity lines and friendly errors; new agent flags.
+- 2026-10-10: Milestone 4, slice 1: loopback dashboard with pairing QR, folders and activity; smart double-click and background mode (`-ui`, `-background`, `-stop`); single running agent; errors shown in the browser when there's no terminal.

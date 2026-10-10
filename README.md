@@ -141,6 +141,8 @@ With no `roots` configured, the agent indexes your standard folders that exist (
 | `extra_ignores` | Extra file or folder names (wildcards allowed) to skip |
 | `include_hidden` | `false` (default) skips names starting with `.`; set `true` to include them |
 | `allowed_networks` | Extra networks allowed to connect, in CIDR notation, e.g. `["100.64.0.0/10"]` for Tailscale. Very broad ranges are rejected |
+| `web_port` | The dashboard's port (default 8765; it must differ from `port`) |
+| `disable_web_ui` | `true` turns the dashboard off |
 
 ## Agent options
 
@@ -159,6 +161,20 @@ Run `fsagent -h` for the full list. The useful ones:
 | `-config <file>` | Use a different settings file |
 | `-dump` | Print the file list as JSON lines and exit (for debugging) |
 | `-version` | Print the version and exit |
+| `-ui` | Open the dashboard in your browser (starts the agent in the background if it isn't running) |
+| `-background` | Run with no window; the dashboard opens in your browser |
+| `-stop` | Stop the agent that is running in the background |
+| `-no-web` | Don't start the dashboard |
+| `-no-open` | Don't open the browser automatically |
+
+## The dashboard
+
+When the agent runs, it also serves a small dashboard for the person at the computer: a big QR code for pairing a phone, the folders being shared, and what's happening. It listens on `127.0.0.1` only, so nothing else on your network can reach it.
+
+- **First start:** your browser opens the dashboard by itself.
+- **Later:** run `fsagent -ui` (on Windows, just double-click the agent). If the agent isn't running, it starts in the background.
+- **Stopping a background agent:** the **Quit** button in the dashboard, or `fsagent -stop`.
+- **Log file:** a background agent writes `agent.log` next to its settings file.
 
 ## Build Phases
 

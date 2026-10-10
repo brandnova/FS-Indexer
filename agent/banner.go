@@ -16,6 +16,7 @@ type startupInfo struct {
 	ConfigPath  string
 	Notice      string // e.g. "using ./config.json from the current folder..."
 	Host        string // this computer's address on the network; "" if unknown
+	Dashboard   string // the dashboard's address; "" if it is off
 	Discovery   string // how automatic discovery is doing, in words
 	DiscoveryOK bool
 }
@@ -46,6 +47,9 @@ func printBanner(c *Console, cfg *Config, info startupInfo) {
 	}
 	if info.Host != "" {
 		c.OK("Address", fmt.Sprintf("%s:%d  (only devices on your network can connect)", info.Host, cfg.Port))
+	}
+	if info.Dashboard != "" {
+		c.OK("Dashboard", info.Dashboard)
 	}
 	if len(cfg.AllowedNetworks) > 0 {
 		c.OK("Networks", "also allowing "+strings.Join(cfg.AllowedNetworks, ", "))

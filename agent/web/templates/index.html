@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{.CSRF}}">
+  <title>{{.Name}} agent</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">
+        <img src="../static/images/FS_Indexer_icon.png" alt="" width="22" height="22">
+      </span>
+      <div>
+        <h1>{{.Name}} agent</h1>
+        <p class="muted small">{{.Version}}</p>
+      </div>
+    </div>
+    <div class="pill" role="status" aria-live="polite">
+      <span class="dot" id="status-dot"></span><span id="status-text">Checking...</span>
+    </div>
+  </header>
+
+  <main id="content">
+    <section class="card" id="pair" aria-labelledby="pair-title">
+      <h2 id="pair-title">Connect a phone</h2>
+      <p class="muted">Open the app on your phone and scan this code. Anyone who scans it can read your file list, so show it only to your own devices.</p>
+      <div class="pair-grid">
+        <div class="qr-box"><img id="qr" alt="QR code for pairing" hidden></div>
+        <div>
+          <p id="pair-warning" class="alert" hidden>The agent couldn't work out this computer's network address. Are you connected to Wi-Fi or a network cable? You can set the address yourself with the <code>-host</code> option.</p>
+          <dl class="kv">
+            <dt>Address</dt><dd><code id="address">-</code></dd>
+            <dt>Token</dt>
+            <dd>
+              <code id="token">••••••••••••••••</code>
+              <button class="link" id="token-toggle" type="button">Show</button>
+              <button class="link" id="token-copy" type="button">Copy</button>
+            </dd>
+          </dl>
+          <p class="muted small">Can't scan? In the app choose &ldquo;Enter details manually&rdquo; and type the address and token.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="folders-title">
+      <h2 id="folders-title">Your folders</h2>
+      <p class="muted small" id="summary">Loading...</p>
+      <table>
+        <thead><tr><th>Name</th><th>Location</th><th class="num">Files</th><th class="num">Size</th></tr></thead>
+        <tbody id="folders-body"></tbody>
+      </table>
+      <p class="muted small">To choose other folders, edit <code id="config-path"></code> and restart the agent.</p>
+    </section>
+
+    <section class="card" aria-labelledby="activity-title">
+      <h2 id="activity-title">Activity</h2>
+      <ul class="feed" id="activity-list"></ul>
+    </section>
+
+    <section class="actions">
+      <button class="btn primary" id="rescan" type="button">Rescan now</button>
+      <button class="btn danger" id="quit" type="button">Quit the agent</button>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

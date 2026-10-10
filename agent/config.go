@@ -27,6 +27,8 @@ type Config struct {
 	DeviceID        string   `json:"device_id"`
 	DeviceName      string   `json:"device_name"`
 	Port            int      `json:"port"`
+	WebPort         int      `json:"web_port"`
+	DisableWebUI    bool     `json:"disable_web_ui"`
 	Token           string   `json:"token"`
 	Roots           []Root   `json:"roots"`
 	ExtraIgnores    []string `json:"extra_ignores"`
@@ -104,6 +106,10 @@ func LoadConfig(configPath string) (*Config, error) {
 	}
 
 	changed := cfg.applyDefaults()
+
+	if err := cfg.validatePorts(); err != nil {
+		return nil, err
+	}
 
 	if len(cfg.Roots) == 0 {
 		if roots := DefaultRoots(); len(roots) > 0 {
@@ -200,6 +206,10 @@ func (c *Config) applyDefaults() bool {
 		c.Port = 8080
 		changed = true
 	}
+	if c.WebPort == 0 {
+		c.WebPort = 8765 // not 8081: that is where the Metro dev server lives
+		changed = true
+	}
 	if c.Token == "" {
 		c.Token = randomHex(16)
 		changed = true
@@ -213,6 +223,17 @@ func (c *Config) applyDefaults() bool {
 		changed = true
 	}
 	return changed
+}
+
+// validatePorts checks that the dashboard port is usable and doesn't clash with the phone port.
+func (c *Config) validatePorts() error {
+	if c.WebPort < 1024 || c.WebPort > 65535 {
+		return fmt.Errorf("web_port %d is not valid: use a number between 1024 and 65535", c.WebPort)
+	}
+	if c.WebPort == c.Port {
+		return fmt.Errorf("web_port %d is the same as port: choose a different web_port", c.WebPort)
+	}
+	return nil
 }
 
 // normalizeRoots expands ~, resolves to absolute real paths, fills labels,

@@ -15,9 +15,13 @@ type friendlyError struct {
 	Hint   string
 }
 
-// fail shows a problem and exits.
+// fail shows a problem and exits. In the background nobody watches a terminal,
+// so the problem is also shown in the browser.
 func fail(c *Console, f friendlyError) {
 	c.Problem(f.Title, f.Detail, f.Hint)
+	if backgroundMode {
+		showErrorInBrowser(f)
+	}
 	os.Exit(1)
 }
 
@@ -55,6 +59,12 @@ func explainConfigError(path string, err error) friendlyError {
 			Title:  `A network in "allowed_networks" isn't valid`,
 			Detail: msg,
 			Hint:   fmt.Sprintf(`use the form 100.64.0.0/10 in %s, or remove the entry`, path),
+		}
+	case strings.Contains(msg, "web_port"):
+		return friendlyError{
+			Title:  `The dashboard port in your settings isn't usable`,
+			Detail: msg,
+			Hint:   fmt.Sprintf(`set "web_port" in %s to a free number between 1024 and 65535 that differs from "port"`, path),
 		}
 	case strings.Contains(msg, "does not exist yet"), strings.Contains(msg, "is incomplete"):
 		return friendlyError{

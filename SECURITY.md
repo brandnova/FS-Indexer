@@ -39,6 +39,10 @@ These are documented design limits of the current version, not vulnerabilities, 
 - **LAN only.** The agent rejects connections from non-private addresses as a safety net. That is not a firewall.
 - **Discovery is visible.** With mDNS enabled, the device name and id are visible to everyone on the local network. The token is never advertised. Use `-no-mdns` to turn it off.
 
+## The dashboard
+
+The agent has a small dashboard for the person at the computer (`http://127.0.0.1:<port>`). It listens on the loopback address only, so other devices on your network can't reach it. It opens with a one-time link; after that a private session cookie keeps you signed in. Every request is checked for the right Host and Origin, and every action needs a per-session token. That protects against malicious web pages and DNS-rebinding attacks. Programs that run as the same user on your computer can read the agent's settings and runtime files; that is normal for software you run yourself. Turn the dashboard off with `-no-web` or `"disable_web_ui": true`.
+
 ## In scope
 
 - Authentication or LAN-guard bypass
