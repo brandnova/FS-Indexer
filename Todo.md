@@ -1,0 +1,1 @@
+Maybe add logging to the agent so that it reports proper logs into a file in a suitable directory (maybe same dir as the agent is stored). The logs will be timestamped and be reported for every action (success or failure or error). This could lead to the implementation of a "Report issue" feature to report the latest errors and/or successes.

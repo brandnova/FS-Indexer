@@ -8,6 +8,9 @@ import (
 	"strings"
 )
 
+// verbose makes the crawler report every path it couldn't read (set by -verbose).
+var verbose bool
+
 // Entry is one line of the index. Field names are the API contract
 // (see docs/API.md) - don't rename them.
 type Entry struct {
@@ -96,7 +99,9 @@ func Crawl(cfg *Config) ([]Entry, int) {
 
 		_ = filepath.WalkDir(rootPath, func(p string, d fs.DirEntry, err error) error {
 			if err != nil {
-				log.Printf("skip %s: %v", p, err)
+				if verbose {
+					log.Printf("  couldn't read %s: %v", p, err)
+				}
 				skipped++
 				return nil
 			}

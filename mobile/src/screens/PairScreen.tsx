@@ -1,8 +1,9 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { ChevronRight, Folder, Monitor, QrCode, Sparkles, X } from 'lucide-react-native';
+import { ChevronRight, Folder, Info, Monitor, QrCode, Sparkles, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { ApiError, toApiError } from '../api/client';
+import { useAgentInfo } from '../components/AgentInfo';
 import { startDiscovery, type DiscoveredDevice } from '../discovery';
 import { pairWith, parseAddress, parseQrPayload } from '../pairing';
 import { platform } from '../platform';
@@ -17,6 +18,7 @@ interface Props {
 export default function PairScreen({ onPaired, onDemo }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const [openAgentInfo, agentInfoModal] = useAgentInfo();
 
   const [mode, setMode] = useState<'form' | 'scan'>('form');
   const [showManual, setShowManual] = useState(false);
@@ -103,6 +105,7 @@ export default function PairScreen({ onPaired, onDemo }: Props) {
         <Text tone="muted">
           Start the agent on your computer. It shows a QR code: scan it here and your files are one tap away.
         </Text>
+        <Button title="What is the agent?" variant="ghost" size="sm" icon={Info} onPress={openAgentInfo} />
       </View>
 
       <Button
@@ -219,6 +222,8 @@ export default function PairScreen({ onPaired, onDemo }: Props) {
         </Text>
         <Button title="Try the demo" variant="tonal" icon={Sparkles} disabled={busy} onPress={onDemo} />
       </View>
+
+      {agentInfoModal}
     </ScrollView>
   );
 }

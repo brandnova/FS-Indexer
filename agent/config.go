@@ -33,7 +33,9 @@ type Config struct {
 	IncludeHidden   bool     `json:"include_hidden"`
 	AllowedNetworks []string `json:"allowed_networks"`
 
-	allowedNets []*net.IPNet // parsed AllowedNetworks; not saved
+	allowedNets  []*net.IPNet // parsed AllowedNetworks; not saved
+	firstRun     bool         // this run created the settings file
+	defaultRoots bool         // "roots" was empty, so the standard folders are used
 }
 
 // ---------- where the config lives ----------
@@ -106,10 +108,8 @@ func LoadConfig(configPath string) (*Config, error) {
 	if len(cfg.Roots) == 0 {
 		if roots := DefaultRoots(); len(roots) > 0 {
 			cfg.Roots = roots
+			cfg.defaultRoots = true
 			changed = true
-			fmt.Fprintf(os.Stderr,
-				"No folders configured: indexing your standard folders (%s).\nEdit \"roots\" in %s to change this.\n",
-				rootLabels(roots), configPath)
 		}
 	}
 
@@ -117,10 +117,8 @@ func LoadConfig(configPath string) (*Config, error) {
 		if err := saveConfig(configPath, cfg); err != nil {
 			return nil, err
 		}
-		if created {
-			fmt.Fprintf(os.Stderr, "Created %s\n", configPath)
-		}
 	}
+	cfg.firstRun = created
 
 	if err := cfg.normalizeRoots(); err != nil {
 		return nil, err

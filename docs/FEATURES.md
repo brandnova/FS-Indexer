@@ -96,15 +96,23 @@ Small features that fit the project's core job of finding your files from your p
 - [x] Demo mode with a bundled sample index, reachable from the walkthrough and the pairing screen (new)
 - [x] Accessibility pass: AA contrast, 44 dp touch targets, screen-reader labels, roles and announcements, capped text scaling on fixed-height rows, reduced motion (new)
 - [x] Loading placeholders and gentle fade-ins (new)
-- [ ] General UI/UX optimization for the agent (clearer terminal output and startup banner, friendlier errors, config helpers) (M)
+- [x] "About the agent" screen (what it shares, three-step setup, good to know), reachable from the walkthrough, pairing screen and Settings (new)
+- [x] Agent terminal experience: startup banner, scan summary, activity lines, friendly errors with fixes, colour only where supported; `-quiet`, `-no-qr`, `-no-color`, `-verbose` (M)
 
 ### Milestone 4: Agent management
-- [ ] Local web UI served by the agent (loopback only): status, roots, pairing QR page, rescan (L)
-- [ ] Add, remove and disable roots and edit ignore rules at runtime, with a folder picker (config written back, then rescan) (M)
-- [ ] Explicit opt-in for whole-home or whole-drive indexing, with hard exclusions (`/proc`, `/sys`, `/dev`, `/run`, OS system folders) (S). Measured: the agent uses about 0.5 KB of memory per entry at peak (316k entries = 168 MB), so reduce per-entry memory first (share string memory between Path, Parent and Name, or keep the index in SQLite) before allowing millions of entries
+- [ ] Local web UI, step 1: dashboard and pairing page on a loopback-only listener (Host/Origin checks, session token, QR in the browser) (M)
+- [ ] Smart double-click: opens the web UI when launched without a terminal, and on first run (M)
+- [ ] Folders page: add, remove, disable, per-folder options, folder picker; settings reload without a restart (M)
+- [ ] Ignore-rules editor with a "test a path" box (S)
+- [ ] Start on login (Windows registry, macOS LaunchAgent, Linux autostart or systemd user unit) (M)
+- [ ] Launchers per OS: Windows shortcut/installer, macOS .app, Linux .desktop entry and icon (M)
+- [ ] Troubleshooter: `fsagent doctor` and a web page (M)
+- [ ] System tray or menu-bar icon: Open dashboard, Show pairing code, Pause sharing, Quit (M; macOS needs cgo, GNOME needs an extension)
+- [ ] Scheduled rescans and a "pause sharing" switch (S)
+- [ ] Private-folder marker file (`.nosync`) (S) (new)
+- [ ] Disk-usage view (agent web UI and phone) (M) (new)
+- [ ] Explicit opt-in for whole-home or whole-drive indexing, with hard exclusions; reduce per-entry memory first (S)
 - [ ] gitignore-style `.ignore` file support (M)
-- [ ] Run in the background and start on login (systemd user unit, Windows startup entry or service, launchd) (M)
-- [ ] System tray icon that opens the web UI (M; may need per-OS build runners)
 
 ### Milestone 5: Security hardening
 Must be finished before any feature that serves file contents.
@@ -151,3 +159,4 @@ Must be finished before any feature that serves file contents.
 - 2026-10-08: Milestone 2 complete: `GET /roots`, full PC paths in a new file details sheet, "Copy PC path" for files and folders. Scale test: 316k entries index in 21 s, about 168 MB; gzip makes the 64.5 MB index 4.6 MB.
 - 2026-10-08: Milestone 3, batch A: new design system, navigation and screens; dark mode; cancellable updates with a time estimate; `scripts/cross-build.sh`.
 - 2026-10-09: Milestone 3, batch B: first-run walkthrough, demo mode, accessibility pass (contrast, touch targets, screen-reader support, text scaling, reduced motion), loading placeholders.
+- 2026-10-09: Milestone 3 complete: "About the agent" screen; agent startup banner, activity lines and friendly errors; new agent flags.

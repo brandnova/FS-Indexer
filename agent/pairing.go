@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
-	"os"
 	"strings"
 
 	"github.com/mdp/qrterminal/v3"
@@ -21,11 +21,16 @@ type pairingPayload struct {
 	Name  string `json:"name"`
 }
 
-// PrintPairing shows the QR code plus the manual-entry fallback.
-func PrintPairing(cfg *Config, host string) {
+// PrintPairing shows the QR code (unless showQR is false) and the manual details.
+func PrintPairing(c *Console, cfg *Config, host string, showQR bool) {
+	c.Blank()
+
 	if host == "" {
-		fmt.Fprintln(os.Stderr, "\nCould not detect a LAN IP address. Are you connected to Wi-Fi?")
-		fmt.Fprintf(os.Stderr, "You can set one with:  -host <ip>\n  Port:  %d\n  Token: %s\n\n", cfg.Port, cfg.Token)
+		c.Warn("Couldn't work out this computer's network address. Are you connected to Wi-Fi or a network cable?")
+		c.Hint("You can set it yourself by starting the agent with:  -host <this computer's address>")
+		c.Blank()
+		c.Text("In the app, choose \"Enter details manually\" and type:")
+		printManual(c, "<this computer's address>:"+fmt.Sprint(cfg.Port), cfg)
 		return
 	}
 
@@ -38,14 +43,30 @@ func PrintPairing(cfg *Config, host string) {
 		Name:  cfg.DeviceName,
 	})
 
-	fmt.Fprintln(os.Stderr, "\nScan this QR code in the mobile app to pair:")
-	fmt.Fprintln(os.Stderr)
-	qrterminal.GenerateHalfBlock(string(payload), qrterminal.L, os.Stderr)
-	fmt.Fprintf(os.Stderr, "\nOr enter manually in the app:\n  Address: %s:%d\n  Token:   %s\n\n", host, cfg.Port, cfg.Token)
+	if showQR {
+		c.Text("Scan this QR code with the app to connect:")
+		c.Blank()
+		c.WithWriter(func(w io.Writer) {
+			qrterminal.GenerateHalfBlock(string(payload), qrterminal.L, w)
+		})
+		c.Blank()
+		c.Text(`Can't scan? In the app choose "Enter details manually" and type:`)
+	} else {
+		c.Text(`To connect, open the app, choose "Enter details manually" and type:`)
+	}
+	printManual(c, fmt.Sprintf("%s:%d", host, cfg.Port), cfg)
 
 	if others := otherLANIPs(host); len(others) > 0 {
-		fmt.Fprintf(os.Stderr, "Other addresses on this machine: %s\n(wrong one in the QR? run with -host <ip>)\n\n", strings.Join(others, ", "))
+		c.Blank()
+		c.Hint("This computer also has the addresses " + strings.Join(others, ", ") + ".")
+		c.Hint("If the QR code shows the wrong one, start the agent with:  -host <address>")
 	}
+}
+
+func printManual(c *Console, address string, cfg *Config) {
+	c.Blank()
+	c.Text("    Address   " + address)
+	c.Text("    Token     " + cfg.Token)
 }
 
 // PreferredLANIP returns the IP of the interface used for the default route

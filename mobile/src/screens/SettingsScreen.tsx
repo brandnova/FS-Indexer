@@ -1,7 +1,8 @@
 import Constants from 'expo-constants';
-import { Download, Moon, Monitor, Settings as SettingsIcon, Sun, Unlink, Wifi } from 'lucide-react-native';
+import { Download, Info, Moon, Monitor, Settings as SettingsIcon, Sun, Unlink, Wifi } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { useAgentInfo } from '../components/AgentInfo';
 import { formatRelative } from '../format';
 import { unpair } from '../pairing';
 import { platform } from '../platform';
@@ -13,6 +14,7 @@ export default function SettingsScreen({ onUnpaired }: { onUnpaired: () => void 
   const s = useSession();
   const { mode, setMode, colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const [openAgentInfo, agentInfoModal] = useAgentInfo();
   const online = s.remote !== null;
   const demo = s.pairing.demo === true;
 
@@ -132,6 +134,12 @@ export default function SettingsScreen({ onUnpaired }: { onUnpaired: () => void 
         <Card style={styles.cardGap}>
           <InfoRow label="App version" value={Constants.expoConfig?.version ?? '-'} />
           {demo ? null : <InfoRow label="Agent version" value={s.remote?.version ?? '-'} />}
+          <ActionRow
+            icon={Info}
+            title="About the agent"
+            subtitle="What it is and what it shares"
+            onPress={openAgentInfo}
+          />
         </Card>
       </Section>
 
@@ -140,6 +148,8 @@ export default function SettingsScreen({ onUnpaired }: { onUnpaired: () => void 
       ) : (
         <Button title="Unpair this PC" icon={Unlink} variant="danger" onPress={confirmUnpair} />
       )}
+
+      {agentInfoModal}
     </ScrollView>
   );
 }

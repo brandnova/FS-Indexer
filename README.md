@@ -2,6 +2,26 @@
 
 A lightweight, offline-first file system indexer and mobile browser. A background agent on your PC crawls selected folders, builds an index of file metadata, and serves it over your local Wi-Fi. A mobile app syncs that index into a local SQLite database, so you can browse and search your PC's files from your phone, including when you're away from home.
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/images/home-light.png" width="200" alt="Home screen with the update status, folders and recent files">
+  <img src="docs/images/files.png" width="200" alt="Browsing a folder">
+  <img src="docs/images/search.png" width="200" alt="Search results">
+  <img src="docs/images/details.png" width="200" alt="File details with the full path on your PC">
+</p>
+
+<p align="center">
+  <img src="docs/images/filters.png" width="200" alt="Sort and filter options">
+  <img src="docs/images/home-dark.png" width="200" alt="The dark theme">
+  <img src="docs/images/pairing.png" width="200" alt="Pairing screen">
+  <img src="docs/images/about-agent.png" width="200" alt="The About the agent screen">
+</p>
+
+<p align="center">
+  <img src="docs/images/agent.png" width="620" alt="The agent's startup screen with the pairing QR code">
+</p>
+
 > **Away from home:** syncing needs both devices on the same network. Away from home, you browse and search the **last synced snapshot**. The app shows a "last synced" timestamp so you can tell how fresh the data is.
 
 ## Tech Stack
@@ -121,6 +141,24 @@ With no `roots` configured, the agent indexes your standard folders that exist (
 | `extra_ignores` | Extra file or folder names (wildcards allowed) to skip |
 | `include_hidden` | `false` (default) skips names starting with `.`; set `true` to include them |
 | `allowed_networks` | Extra networks allowed to connect, in CIDR notation, e.g. `["100.64.0.0/10"]` for Tailscale. Very broad ranges are rejected |
+
+## Agent options
+
+Run `fsagent -h` for the full list. The useful ones:
+
+| Option | What it does |
+| --- | --- |
+| `-pair` | Show the pairing QR code and token again, then exit |
+| `-rotate-token` | Create a new access token (phones must pair again), then exit |
+| `-quiet` | Print only warnings and errors: no banner, QR code or token. Good for running as a service |
+| `-no-qr` | Don't draw the QR code; show the address and token only |
+| `-no-color` | Turn off colours (the `NO_COLOR` environment variable works too) |
+| `-verbose` | List every path that couldn't be read while scanning |
+| `-host <address>` | Use this address in the QR code (when the wrong network is detected) |
+| `-no-mdns` | Don't let the app find this computer automatically |
+| `-config <file>` | Use a different settings file |
+| `-dump` | Print the file list as JSON lines and exit (for debugging) |
+| `-version` | Print the version and exit |
 
 ## Build Phases
 

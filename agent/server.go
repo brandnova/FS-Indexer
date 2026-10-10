@@ -23,6 +23,10 @@ var version = "dev"
 // the mobile app refuses agents whose API version it doesn't support.
 const apiVersion = 1
 
+// activity reports something worth telling the user, such as a phone updating
+// its file list. The console replaces this; the default is the standard log.
+var activity = func(format string, args ...any) { log.Printf(format, args...) }
+
 func NewServer(cfg *Config, ix *Indexer) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/ping", pingHandler(cfg, ix))
@@ -109,8 +113,8 @@ func indexHandler(ix *Indexer) http.HandlerFunc {
 			_ = gz.Close() // writes the final compressed block
 		}
 
-		log.Printf("index: %d entries to %s (%s, %s sent) in %s",
-			len(entries), clientIP(r), encoding, humanBytes(sent.n), time.Since(start).Round(time.Millisecond))
+		activity("%s copied the file list: %d items, %s sent (%s) in %s",
+			clientIP(r), len(entries), humanBytes(sent.n), encoding, time.Since(start).Round(time.Millisecond))
 	}
 }
 
@@ -217,7 +221,13 @@ func (c *countingWriter) Write(p []byte) (int, error) {
 }
 
 func humanBytes(n int64) string {
-	return fmt.Sprintf("%.1f MB", float64(n)/1e6)
+	switch {
+	case n >= 1_000_000:
+		return fmt.Sprintf("%.1f MB", float64(n)/1e6)
+	case n >= 1_000:
+		return fmt.Sprintf("%.0f KB", float64(n)/1e3)
+	}
+	return fmt.Sprintf("%d B", n)
 }
 
 func clientIP(r *http.Request) string {
