@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -27,6 +27,7 @@ func main() {
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	pair := flag.Bool("pair", false, "show the pairing QR code and token, then exit (does not start the agent)")
 	rotate := flag.Bool("rotate-token", false, "create a new access token, show the pairing QR code, then exit")
+	report := flag.Bool("report", false, "print a problem report (the token is removed) and exit")
 	quiet := flag.Bool("quiet", false, "print only warnings and errors (no banner, QR code or token)")
 	noQR := flag.Bool("no-qr", false, "don't draw the QR code; show the address and token only")
 	noColor := flag.Bool("no-color", false, "turn off colours (the NO_COLOR environment variable works too)")
@@ -35,10 +36,8 @@ func main() {
 	stopAgent := flag.Bool("stop", false, "stop the agent that is running in the background")
 	noWeb := flag.Bool("no-web", false, "don't start the dashboard")
 	noOpen := flag.Bool("no-open", false, "don't open the browser automatically")
-	flag.BoolVar(&verbose, "verbose", false, "list every path that couldn't be read while scanning")
+	flag.BoolVar(&verbose, "verbose", false, "also record extra details in the log file, such as every path that couldn't be read")
 	flag.Parse()
-
-	log.SetFlags(0)
 
 	if *showVersion {
 		fmt.Printf("%s %s (%s %s/%s)\n", binaryName, version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
@@ -51,6 +50,7 @@ func main() {
 
 	configPath, notice := ResolveConfigPath(*configFlag)
 	runtimePath := siblingPath(configPath, "runtime.json", ".runtime.json")
+	logPath := siblingPath(configPath, "agent.log", ".log")
 
 	// Stop an agent that runs in the background.
 	if *stopAgent {
@@ -84,22 +84,45 @@ func main() {
 		return
 	}
 
-	con := NewConsole(os.Stderr, *quiet, *noColor)
-	if isChild {
-		// No terminal here: everything the agent says goes to a log file instead.
-		if logFile, err := openLogFile(siblingPath(configPath, "agent.log", ".log")); err == nil {
-			defer logFile.Close()
-			log.SetOutput(logFile)
-			con = newConsoleFor(logFile, false, false)
-		}
+	// The log: every action and its outcome, in a file next to the settings.
+	if l, err := OpenLogger(logPath, verbose); err != nil {
+		talk.Warn("Couldn't open the log file (" + err.Error() + "). The agent still works, but won't keep a log.")
+	} else {
+		logs = l
+		defer logs.Close()
 	}
 
+	mode := "foreground"
+	con := NewConsole(os.Stderr, *quiet, *noColor)
+	if isChild {
+		mode = "background"
+		con = newConsoleFor(io.Discard, false, true) // no terminal here: the log file tells the story
+	}
+	logs.Infof("agent", "%s %s starting (%s/%s, %s, process %d)", displayName, versionLabel(), runtime.GOOS, runtime.GOARCH, mode, os.Getpid())
+
 	// Maintenance commands: touch the settings, print, exit. No server.
+	if *report {
+		cfg, err := ReadConfig(configPath)
+		if err != nil {
+			fail(talk, explainConfigError(configPath, err))
+		}
+		logs.Infof("agent", "a problem report was printed")
+		fmt.Print(BuildReport(ReportInput{
+			Config:     cfg,
+			ConfigPath: configPath,
+			LogPath:    logPath,
+			Mode:       "offline report (the running agent was not asked)",
+			LogLines:   tailLines(logPath, 150),
+			MaskIPs:    true,
+		}))
+		return
+	}
 	if *rotate {
 		cfg, err := RotateToken(configPath)
 		if err != nil {
 			fail(talk, explainConfigError(configPath, err))
 		}
+		logs.Infof("config", "the access token was replaced")
 		talk.Blank()
 		talk.OK("Token", "a new access token was saved")
 		talk.Hint("Restart the agent for it to take effect, then pair your phones again.")
@@ -112,6 +135,7 @@ func main() {
 		if err != nil {
 			fail(talk, explainConfigError(configPath, err))
 		}
+		logs.Infof("pairing", "the pairing details were shown in the terminal")
 		PrintPairing(talk, cfg, hostOrDetect(*hostFlag), !*noQR)
 		talk.Blank()
 		return
@@ -120,6 +144,11 @@ func main() {
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
 		fail(con, explainConfigError(configPath, err))
+	}
+	logs.Infof("config", "settings loaded from %s (first start: %v)", configPath, cfg.firstRun)
+	logs.Infof("config", "sharing %d of %d folders: %s", len(cfg.enabledRoots()), len(cfg.Roots), rootLabels(cfg.enabledRoots()))
+	if notice != "" {
+		logs.Warnf("config", "%s", notice)
 	}
 
 	// Debug mode: crawl once, print, exit. No server.
@@ -135,6 +164,7 @@ func main() {
 	webEnabled := !*noWeb && !cfg.DisableWebUI
 	if webEnabled {
 		if link, ok := reopenRunning(runtimePath); ok {
+			logs.Infof("agent", "another agent is already running; opened its dashboard instead of starting a second one")
 			con.Text("The agent is already running.")
 			if *noOpen {
 				con.Text("Dashboard link: " + link)
@@ -152,7 +182,7 @@ func main() {
 	ix := NewIndexer(cfg)
 	var scans atomic.Int32
 	ix.OnScan = func(r ScanResult) {
-		reportScan(con, cfg, r, scans.Add(1) == 1)
+		reportScan(con, ix.Config(), r, scans.Add(1) == 1)
 		events.Addf("Scanned your folders: %s items in %s", commas(r.Entries), roundDuration(r.Duration))
 	}
 	activity = func(format string, args ...any) {
@@ -167,6 +197,7 @@ func main() {
 	if err != nil {
 		fail(con, explainListenError(srv.Addr, err))
 	}
+	logs.Infof("phone-api", "listening on %s", srv.Addr)
 	go func() {
 		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 			fail(con, friendlyError{Title: "The agent stopped unexpectedly", Detail: err.Error()})
@@ -174,6 +205,11 @@ func main() {
 	}()
 
 	host := hostOrDetect(*hostFlag)
+	if host == "" {
+		logs.Warnf("network", "couldn't work out this computer's network address")
+	} else {
+		logs.Infof("network", "this computer's address is %s", host)
+	}
 
 	// Automatic discovery is a convenience: if it fails, everything else still works.
 	discovery, discoveryOK := "off (started with -no-mdns)", false
@@ -181,9 +217,11 @@ func main() {
 		m, err := StartMDNS(cfg, host)
 		if err != nil {
 			discovery = "unavailable (" + err.Error() + "). You can still connect with the QR code."
+			logs.Warnf("discovery", "automatic discovery is unavailable: %v", err)
 		} else {
 			defer m.Shutdown()
 			discovery, discoveryOK = "the app can find this computer by itself", true
+			logs.Infof("discovery", "advertising on the local network")
 		}
 	}
 
@@ -198,18 +236,23 @@ func main() {
 			ConfigPath: configPath,
 			HostFlag:   *hostFlag,
 			Discovery:  discovery,
+			Mode:       mode,
 			Quit:       shutdown,
 		})
 		if err != nil {
 			con.Warn("The dashboard couldn't start: " + err.Error())
+			logs.Errorf("dashboard", "couldn't start: %v", err)
 		} else if uiLn, err := u.Listen(cfg.WebPort); err != nil {
 			con.Warn("The dashboard couldn't start: " + err.Error())
+			logs.Errorf("dashboard", "couldn't listen: %v", err)
 		} else {
 			ui = u
 			uiSrv = &http.Server{Handler: ui.Handler(), ReadHeaderTimeout: 10 * time.Second}
 			go func() { _ = uiSrv.Serve(uiLn) }()
+			logs.Infof("dashboard", "listening on %s (this computer only)", ui.BaseURL())
 			if err := writeRuntime(runtimePath, runtimeInfo{Port: ui.port, Secret: ui.secret}); err != nil {
 				con.Warn("Couldn't record that the dashboard is running: " + err.Error())
+				logs.Warnf("dashboard", "couldn't write the runtime file: %v", err)
 			}
 			defer removeRuntime(runtimePath)
 		}
@@ -217,6 +260,7 @@ func main() {
 
 	info := startupInfo{
 		ConfigPath:  configPath,
+		LogPath:     logs.Path(),
 		Notice:      notice,
 		Host:        host,
 		Discovery:   discovery,
@@ -228,7 +272,7 @@ func main() {
 	events.Addf("Agent started (%s)", versionLabel())
 	printBanner(con, cfg, info)
 
-	if !isChild { // a log file must never contain the token, so the pairing details stay on screen only
+	if !isChild { // the pairing details stay on screen: they are never written to a file
 		PrintPairing(con, cfg, host, !*noQR)
 		if ui != nil {
 			con.Blank()
@@ -248,6 +292,7 @@ func main() {
 		}
 		if err := openBrowser(ui.LoginURL(2*time.Minute, next)); err != nil {
 			con.Warn("Couldn't open your browser. Run  " + binaryName + " -ui  or visit " + ui.BaseURL())
+			logs.Warnf("dashboard", "couldn't open the browser: %v", err)
 		}
 	}
 
@@ -256,6 +301,7 @@ func main() {
 
 	<-ctx.Done()
 
+	logs.Infof("agent", "stopping")
 	con.Blank()
 	con.Text("Stopping...")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -264,6 +310,7 @@ func main() {
 	if uiSrv != nil {
 		_ = uiSrv.Shutdown(shutdownCtx)
 	}
+	logs.Infof("agent", "stopped")
 }
 
 func hostOrDetect(flagValue string) string {

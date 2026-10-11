@@ -24,12 +24,13 @@ const sessionCookie = "fsagent_session"
 
 // WebOptions is everything the dashboard needs from the rest of the agent.
 type WebOptions struct {
-	Config     *Config
+	Config     *Config // the settings at startup (token, ports and so on never change while running)
 	Indexer    *Indexer
 	Events     *EventLog
 	ConfigPath string
 	HostFlag   string // the -host override, if any
 	Discovery  string // how automatic discovery is doing, in words
+	Mode       string // "foreground" or "background"
 	Quit       func() // asks the agent to shut down
 }
 
@@ -50,6 +51,8 @@ type WebUI struct {
 	started time.Time
 	port    int
 	secret  string // lets a second launch of the agent talk to this one (see launch.go)
+
+	editMu sync.Mutex // one settings change at a time
 
 	mu       sync.Mutex
 	tickets  map[string]time.Time
@@ -126,7 +129,7 @@ func (ui *WebUI) useTicket(t string) bool {
 	return ok && time.Now().Before(expires)
 }
 
-// LoginURL is a link that opens the dashboard once. `next` can be "pair" to land on the pairing card.
+// LoginURL is a link that opens the dashboard once. `next` can be "pair" to land on the pairing page.
 func (ui *WebUI) LoginURL(ttl time.Duration, next string) string {
 	link := fmt.Sprintf("%s/login?ticket=%s", ui.BaseURL(), ui.NewTicket(ttl))
 	if next != "" {
@@ -172,11 +175,28 @@ func (ui *WebUI) Handler() http.Handler {
 	mux.Handle("GET /static/", http.StripPrefix("/static/", ui.static))
 	mux.HandleFunc("GET /login", ui.handleLogin)
 	mux.HandleFunc("GET /{$}", ui.handleIndex)
+
 	mux.HandleFunc("GET /api/status", ui.api(ui.handleStatus))
 	mux.HandleFunc("GET /api/pairing", ui.api(ui.handlePairing))
 	mux.HandleFunc("GET /api/pairing.svg", ui.api(ui.handlePairingSVG))
 	mux.HandleFunc("POST /api/rescan", ui.api(ui.handleRescan))
 	mux.HandleFunc("POST /api/quit", ui.api(ui.handleQuit))
+
+	mux.HandleFunc("GET /api/folders", ui.api(ui.handleFolders))
+	mux.HandleFunc("POST /api/folders/add", ui.api(ui.handleFolderAdd))
+	mux.HandleFunc("POST /api/folders/update", ui.api(ui.handleFolderUpdate))
+	mux.HandleFunc("POST /api/folders/remove", ui.api(ui.handleFolderRemove))
+	mux.HandleFunc("GET /api/fs/list", ui.api(ui.handleFSList))
+
+	mux.HandleFunc("GET /api/rules", ui.api(ui.handleRules))
+	mux.HandleFunc("POST /api/rules", ui.api(ui.handleRulesSave))
+	mux.HandleFunc("POST /api/rules/test", ui.api(ui.handleRulesTest))
+
+	mux.HandleFunc("GET /api/logs", ui.api(ui.handleLogs))
+	mux.HandleFunc("GET /api/logs/download", ui.api(ui.handleLogDownload))
+	mux.HandleFunc("POST /api/logs/open", ui.api(ui.handleLogOpen))
+	mux.HandleFunc("GET /api/report", ui.api(ui.handleReport))
+
 	mux.HandleFunc("POST /internal/launch", ui.handleInternalLaunch)
 	mux.HandleFunc("POST /internal/quit", ui.handleInternalQuit)
 	return ui.guard(mux)
@@ -194,6 +214,7 @@ func (ui *WebUI) guard(next http.Handler) http.Handler {
 
 		// DNS-rebinding protection: only our own address is accepted as the Host.
 		if !ui.allowedHost(r.Host) {
+			logs.Warnf("dashboard", "refused a request for the host %q", r.Host)
 			http.Error(rw, "forbidden", http.StatusForbidden)
 			return
 		}
@@ -202,11 +223,13 @@ func (ui *WebUI) guard(next http.Handler) http.Handler {
 			if origin := r.Header.Get("Origin"); origin != "" {
 				u, err := url.Parse(origin)
 				if err != nil || u.Scheme != "http" || !ui.allowedHost(u.Host) {
+					logs.Warnf("dashboard", "refused a change that came from another site (%q)", origin)
 					http.Error(rw, "forbidden", http.StatusForbidden)
 					return
 				}
 			}
 			if site := r.Header.Get("Sec-Fetch-Site"); site != "" && site != "same-origin" && site != "none" {
+				logs.Warnf("dashboard", "refused a cross-site change (%s)", site)
 				http.Error(rw, "forbidden", http.StatusForbidden)
 				return
 			}
@@ -225,6 +248,7 @@ func (ui *WebUI) api(h apiHandler) http.HandlerFunc {
 		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			if subtle.ConstantTimeCompare([]byte(r.Header.Get("X-CSRF-Token")), []byte(s.csrf)) != 1 {
+				logs.Warnf("dashboard", "refused a change without a valid session token")
 				writeJSON(rw, http.StatusForbidden, map[string]string{"error": "bad_csrf_token"})
 				return
 			}
@@ -237,6 +261,27 @@ func (ui *WebUI) secretOK(r *http.Request) bool {
 	return subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Launch-Secret")), []byte(ui.secret)) == 1
 }
 
+// readJSON reads a small JSON request body. It answers with an error and returns false if that fails.
+func readJSON(rw http.ResponseWriter, r *http.Request, v any) bool {
+	r.Body = http.MaxBytesReader(rw, r.Body, 1<<16)
+	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+		writeJSON(rw, http.StatusBadRequest, map[string]string{"error": "That request wasn't understood."})
+		return false
+	}
+	return true
+}
+
+// applyConfig saves new settings, starts using them and rescans. Callers hold editMu.
+func (ui *WebUI) applyConfig(next *Config) error {
+	if err := saveConfig(ui.opts.ConfigPath, next); err != nil {
+		logs.Errorf("config", "couldn't save the settings: %v", err)
+		return err
+	}
+	ui.opts.Indexer.SetConfig(next)
+	ui.opts.Indexer.RequestScan()
+	return nil
+}
+
 // ---------- pages ----------
 
 func (ui *WebUI) renderLocked(rw http.ResponseWriter, status int, title, message string) {
@@ -247,10 +292,12 @@ func (ui *WebUI) renderLocked(rw http.ResponseWriter, status int, title, message
 
 func (ui *WebUI) handleLogin(rw http.ResponseWriter, r *http.Request) {
 	if !ui.useTicket(r.URL.Query().Get("ticket")) {
+		logs.Warnf("dashboard", "a sign-in link was refused (expired, already used or invalid)")
 		ui.renderLocked(rw, http.StatusForbidden, "This link has expired",
 			"Links from the agent work once and only for a few minutes. Run \""+binaryName+" -ui\" to get a fresh one.")
 		return
 	}
+	logs.Infof("dashboard", "someone signed in from the browser")
 	http.SetCookie(rw, &http.Cookie{
 		Name:     sessionCookie,
 		Value:    ui.newSession(),
@@ -283,10 +330,11 @@ func (ui *WebUI) handleIndex(rw http.ResponseWriter, r *http.Request) {
 // ---------- API ----------
 
 type folderStat struct {
-	Label string `json:"label"`
-	Path  string `json:"path"`
-	Files int    `json:"files"`
-	Bytes int64  `json:"bytes"`
+	Label    string `json:"label"`
+	Path     string `json:"path"`
+	Disabled bool   `json:"disabled"`
+	Files    int    `json:"files"`
+	Bytes    int64  `json:"bytes"`
 }
 
 type statusResponse struct {
@@ -294,11 +342,13 @@ type statusResponse struct {
 	Version       string       `json:"version"`
 	APIVersion    int          `json:"api_version"`
 	ConfigPath    string       `json:"config_path"`
+	LogPath       string       `json:"log_path"`
 	Address       string       `json:"address"`
 	Discovery     string       `json:"discovery"`
 	Scanning      bool         `json:"scanning"`
 	IndexedAt     int64        `json:"indexed_at"`
 	Files         int          `json:"files"`
+	SyncCount     int64        `json:"sync_count"`
 	UptimeSeconds int64        `json:"uptime_seconds"`
 	Folders       []folderStat `json:"folders"`
 	Events        []Event      `json:"events"`
@@ -309,7 +359,7 @@ func folderStats(entries []Entry, roots []Root) []folderStat {
 	out := make([]folderStat, len(roots))
 	byLabel := map[string]int{}
 	for i, r := range roots {
-		out[i] = folderStat{Label: r.Label, Path: r.Path}
+		out[i] = folderStat{Label: r.Label, Path: r.Path, Disabled: r.Disabled}
 		byLabel[r.Label] = i
 	}
 	for i := range entries {
@@ -338,8 +388,9 @@ func (ui *WebUI) host() string {
 
 func (ui *WebUI) handleStatus(rw http.ResponseWriter, r *http.Request, _ *session) {
 	cfg := ui.opts.Config
+	live := ui.opts.Indexer.Config()
 	entries, at := ui.opts.Indexer.Snapshot()
-	folders := folderStats(entries, cfg.Roots)
+	folders := folderStats(entries, live.Roots)
 
 	files := 0
 	for _, f := range folders {
@@ -359,11 +410,13 @@ func (ui *WebUI) handleStatus(rw http.ResponseWriter, r *http.Request, _ *sessio
 		Version:       versionLabel(),
 		APIVersion:    apiVersion,
 		ConfigPath:    ui.opts.ConfigPath,
+		LogPath:       logs.Path(),
 		Address:       address,
 		Discovery:     ui.opts.Discovery,
 		Scanning:      ui.opts.Indexer.Scanning(),
 		IndexedAt:     indexedAt,
 		Files:         files,
+		SyncCount:     syncCount.Load(),
 		UptimeSeconds: int64(time.Since(ui.started).Seconds()),
 		Folders:       folders,
 		Events:        ui.opts.Events.Recent(),
@@ -377,11 +430,15 @@ func (ui *WebUI) handlePairing(rw http.ResponseWriter, r *http.Request, _ *sessi
 	if host != "" {
 		address = fmt.Sprintf("%s:%d", host, cfg.Port)
 	}
+	others := otherLANIPs(host)
+	if others == nil {
+		others = []string{}
+	}
 	writeJSON(rw, http.StatusOK, map[string]any{
 		"address": address,
 		"token":   cfg.Token,
 		"name":    cfg.DeviceName,
-		"others":  otherLANIPs(host),
+		"others":  others,
 	})
 }
 
@@ -412,12 +469,14 @@ func (ui *WebUI) handlePairingSVG(rw http.ResponseWriter, r *http.Request, _ *se
 func (ui *WebUI) handleRescan(rw http.ResponseWriter, r *http.Request, _ *session) {
 	started := ui.opts.Indexer.StartScan()
 	if started {
+		logs.Infof("dashboard", "a rescan was started from the dashboard")
 		ui.opts.Events.Addf("Rescan started from the dashboard")
 	}
 	writeJSON(rw, http.StatusOK, map[string]bool{"started": started})
 }
 
 func (ui *WebUI) handleQuit(rw http.ResponseWriter, r *http.Request, _ *session) {
+	logs.Infof("dashboard", "the agent was asked to quit from the dashboard")
 	writeJSON(rw, http.StatusOK, map[string]bool{"stopping": true})
 	go func() {
 		time.Sleep(300 * time.Millisecond) // let the answer reach the browser first
@@ -434,6 +493,7 @@ func (ui *WebUI) handleInternalLaunch(rw http.ResponseWriter, r *http.Request) {
 		writeJSON(rw, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
+	logs.Infof("agent", "another launch asked for a fresh dashboard link")
 	writeJSON(rw, http.StatusOK, map[string]string{"url": ui.LoginURL(2*time.Minute, "")})
 }
 
@@ -443,6 +503,7 @@ func (ui *WebUI) handleInternalQuit(rw http.ResponseWriter, r *http.Request) {
 		writeJSON(rw, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
+	logs.Infof("agent", "asked to stop by -stop")
 	writeJSON(rw, http.StatusOK, map[string]bool{"stopping": true})
 	go ui.opts.Quit()
 }

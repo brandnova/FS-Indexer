@@ -2,13 +2,12 @@ package main
 
 import (
 	"io/fs"
-	"log"
 	"path"
 	"path/filepath"
 	"strings"
 )
 
-// verbose makes the crawler report every path it couldn't read (set by -verbose).
+// verbose is set by -verbose: the log then also records every path that couldn't be read.
 var verbose bool
 
 // Entry is one line of the index. Field names are the API contract
@@ -23,9 +22,17 @@ type Entry struct {
 	IsDir  bool   `json:"is_dir"`
 }
 
+// Where a rule comes from, in words a person understands (shown in the dashboard).
+const (
+	srcSecret = "passwords and keys"
+	srcNoise  = "common clutter"
+	srcSystem = "system files"
+	srcHidden = "hidden files"
+	srcYours  = "your own rules"
+)
+
 // Names (or glob patterns) skipped everywhere, matched case-insensitively.
-var defaultIgnores = []string{
-	// Build output and system noise
+var noiseIgnores = []string{
 	"node_modules",
 	".git",
 	"__pycache__",
@@ -36,8 +43,10 @@ var defaultIgnores = []string{
 	".trash*",
 	".ds_store",
 	"thumbs.db",
+}
 
-	// Secrets and credentials: these names are never indexed
+// Secrets and credentials: these names are never indexed.
+var secretIgnores = []string{
 	".ssh",
 	".gnupg",
 	".aws",
@@ -50,58 +59,81 @@ var defaultIgnores = []string{
 	"*.pfx",
 }
 
+// defaultIgnores is every built-in pattern.
+var defaultIgnores = append(append([]string{}, noiseIgnores...), secretIgnores...)
+
+type rule struct {
+	pattern string
+	source  string
+}
+
 type ignorer struct {
-	patterns []string
+	rules []rule
 }
 
-// newIgnorer combines the global defaults with extra patterns.
+func (ig *ignorer) add(source string, patterns ...string) {
+	for _, p := range patterns {
+		ig.rules = append(ig.rules, rule{pattern: strings.ToLower(p), source: source})
+	}
+}
+
+// newIgnorer combines the built-in defaults with extra patterns of the user's.
 func newIgnorer(extra []string) *ignorer {
-	all := append([]string{}, defaultIgnores...)
-	all = append(all, extra...)
-	for i := range all {
-		all[i] = strings.ToLower(all[i])
-	}
-	return &ignorer{patterns: all}
+	ig := &ignorer{}
+	ig.add(srcNoise, noiseIgnores...)
+	ig.add(srcSecret, secretIgnores...)
+	ig.add(srcYours, extra...)
+	return ig
 }
 
-// ignorerFor builds the full rule set for a config: global defaults, the OS
-// preset, hidden files (unless include_hidden is set) and the user's patterns.
-func ignorerFor(cfg *Config) *ignorer {
-	extra := append([]string{}, presetIgnores()...)
-	if !cfg.IncludeHidden {
-		extra = append(extra, ".*")
+// ignorerFor builds the full rule set for a config: built-in defaults, the OS
+// preset, hidden files (unless allowed) and the user's own patterns.
+func ignorerFor(cfg *Config, includeHidden bool) *ignorer {
+	ig := &ignorer{}
+	ig.add(srcNoise, noiseIgnores...)
+	ig.add(srcSecret, secretIgnores...)
+	ig.add(srcSystem, presetIgnores()...)
+	if !includeHidden {
+		ig.add(srcHidden, ".*")
 	}
-	extra = append(extra, cfg.ExtraIgnores...)
-	return newIgnorer(extra)
+	ig.add(srcYours, cfg.ExtraIgnores...)
+	return ig
+}
+
+// why says which rule (if any) skips a file or folder name.
+func (ig *ignorer) why(name string) (rule, bool) {
+	n := strings.ToLower(name)
+	for _, r := range ig.rules {
+		if ok, _ := filepath.Match(r.pattern, n); ok {
+			return r, true
+		}
+	}
+	return rule{}, false
 }
 
 func (ig *ignorer) match(name string) bool {
-	n := strings.ToLower(name)
-	for _, p := range ig.patterns {
-		if ok, _ := filepath.Match(p, n); ok {
-			return true
-		}
-	}
-	return false
+	_, ok := ig.why(name)
+	return ok
 }
 
-// Crawl walks every configured root and returns a flat list of entries plus
-// the number of paths that had to be skipped because of errors (permissions,
-// files vanishing mid-scan, etc). Symlinks are never followed or indexed.
+// Crawl walks every folder that is switched on and returns a flat list of
+// entries plus the number of paths that had to be skipped because of errors
+// (permissions, files vanishing mid-scan, etc). Symlinks are never followed or indexed.
 func Crawl(cfg *Config) ([]Entry, int) {
-	ig := ignorerFor(cfg)
 	entries := make([]Entry, 0, 50_000)
 	skipped := 0
 
 	for _, root := range cfg.Roots {
+		if root.Disabled {
+			continue
+		}
+		ig := ignorerFor(cfg, cfg.IncludeHidden || root.IncludeHidden)
 		rootPath := root.Path
 		label := root.Label
 
 		_ = filepath.WalkDir(rootPath, func(p string, d fs.DirEntry, err error) error {
 			if err != nil {
-				if verbose {
-					log.Printf("  couldn't read %s: %v", p, err)
-				}
+				logs.Debugf("scan", "couldn't read %s: %v", p, err)
 				skipped++
 				return nil
 			}

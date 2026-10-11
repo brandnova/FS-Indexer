@@ -50,4 +50,4 @@ yarn-error.*
 NEXT.md
 RELEASING.md
 STORE_LISTING.md
-/mobile/assets/icons/
+/gitignore/

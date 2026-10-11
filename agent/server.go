@@ -7,12 +7,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -23,15 +23,19 @@ var version = "dev"
 // the mobile app refuses agents whose API version it doesn't support.
 const apiVersion = 1
 
-// activity reports something worth telling the user, such as a phone updating
-// its file list. The console replaces this; the default is the standard log.
-var activity = func(format string, args ...any) { log.Printf(format, args...) }
+// activity reports something worth telling the person at the console and in the
+// dashboard feed, such as a phone updating its file list. main replaces it.
+// (The log file is written separately, at the place where things happen.)
+var activity = func(format string, args ...any) {}
+
+// syncCount is how many times a phone has copied the file list since the agent started.
+var syncCount atomic.Int64
 
 func NewServer(cfg *Config, ix *Indexer) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/ping", pingHandler(cfg, ix))
 	mux.HandleFunc("GET /api/v1/index", indexHandler(ix))
-	mux.HandleFunc("GET /api/v1/roots", rootsHandler(cfg))
+	mux.HandleFunc("GET /api/v1/roots", rootsHandler(ix))
 	mux.HandleFunc("POST /api/v1/reindex", reindexHandler(ix))
 
 	// 10 failed attempts within a minute locks that address out for a minute.
@@ -55,6 +59,7 @@ func pingHandler(cfg *Config, ix *Indexer) http.HandlerFunc {
 		if !at.IsZero() {
 			indexedAt = at.Unix()
 		}
+		logs.Debugf("phone", "%s checked in", clientIP(r))
 		writeJSON(w, http.StatusOK, map[string]any{
 			"device_id":   cfg.DeviceID,
 			"name":        cfg.DeviceName,
@@ -102,9 +107,11 @@ func indexHandler(ix *Indexer) http.HandlerFunc {
 		for i := range entries {
 			// Stop early if the phone disconnected.
 			if i%1000 == 0 && r.Context().Err() != nil {
+				logs.Warnf("phone", "%s disconnected before the file list was fully sent", clientIP(r))
 				return
 			}
 			if err := enc.Encode(&entries[i]); err != nil {
+				logs.Warnf("phone", "sending the file list to %s failed: %v", clientIP(r), err)
 				return
 			}
 		}
@@ -113,21 +120,26 @@ func indexHandler(ix *Indexer) http.HandlerFunc {
 			_ = gz.Close() // writes the final compressed block
 		}
 
+		syncCount.Add(1)
+		logs.Infof("phone", "%s copied the file list: %d items, %s sent (%s) in %s",
+			clientIP(r), len(entries), humanBytes(sent.n), encoding, time.Since(start).Round(time.Millisecond))
 		activity("%s copied the file list: %d items, %s sent (%s) in %s",
 			clientIP(r), len(entries), humanBytes(sent.n), encoding, time.Since(start).Round(time.Millisecond))
 	}
 }
 
-// rootsHandler tells the phone where each indexed folder lives on this PC, so
-// it can show real paths. Roots were resolved to absolute paths at startup.
-func rootsHandler(cfg *Config) http.HandlerFunc {
+// rootsHandler tells the phone where each shared folder lives on this PC, so
+// it can show real paths. It reads the current settings every time, so folders
+// added in the dashboard show up straight away.
+func rootsHandler(ix *Indexer) http.HandlerFunc {
 	type rootInfo struct {
 		Label string `json:"label"`
 		Path  string `json:"path"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
+		cfg := ix.Config()
 		roots := make([]rootInfo, 0, len(cfg.Roots))
-		for _, root := range cfg.Roots {
+		for _, root := range cfg.enabledRoots() {
 			roots = append(roots, rootInfo{Label: root.Label, Path: root.Path})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
@@ -139,7 +151,9 @@ func rootsHandler(cfg *Config) http.HandlerFunc {
 
 func reindexHandler(ix *Indexer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if ix.StartScan() {
+		started := ix.StartScan()
+		logs.Infof("phone", "%s asked for a rescan (started: %v)", clientIP(r), started)
+		if started {
 			writeJSON(w, http.StatusAccepted, map[string]string{"status": "started"})
 			return
 		}
@@ -158,6 +172,7 @@ func lanOnly(next http.Handler, extra ...*net.IPNet) http.Handler {
 		host, _, err := net.SplitHostPort(r.RemoteAddr)
 		ip := net.ParseIP(host)
 		if err != nil || ip == nil || !(isLocalAddress(ip) || inAnyNetwork(ip, extra)) {
+			logs.Warnf("security", "refused a request from %s: not on your network", r.RemoteAddr)
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 			return
 		}
@@ -194,6 +209,10 @@ func auth(token string, lim *limiter, next http.Handler) http.Handler {
 		got, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 		if !ok || subtle.ConstantTimeCompare([]byte(got), want) != 1 {
 			lim.fail(ip, now)
+			logs.Warnf("security", "wrong or missing access token from %s", ip)
+			if _, locked := lim.blocked(ip, now); locked { // this failure tipped it over
+				logs.Warnf("security", "%s is locked out for a minute after too many wrong tokens", ip)
+			}
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 			return
 		}
@@ -222,6 +241,8 @@ func (c *countingWriter) Write(p []byte) (int, error) {
 
 func humanBytes(n int64) string {
 	switch {
+	case n >= 1_000_000_000:
+		return fmt.Sprintf("%.1f GB", float64(n)/1e9)
 	case n >= 1_000_000:
 		return fmt.Sprintf("%.1f MB", float64(n)/1e6)
 	case n >= 1_000:

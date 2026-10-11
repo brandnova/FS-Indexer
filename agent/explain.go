@@ -15,9 +15,10 @@ type friendlyError struct {
 	Hint   string
 }
 
-// fail shows a problem and exits. In the background nobody watches a terminal,
-// so the problem is also shown in the browser.
+// fail shows a problem, logs it, and exits. In the background nobody watches a
+// terminal, so the problem is also shown in the browser.
 func fail(c *Console, f friendlyError) {
+	logs.Errorf("agent", "%s. %s", f.Title, f.Detail)
 	c.Problem(f.Title, f.Detail, f.Hint)
 	if backgroundMode {
 		showErrorInBrowser(f)
@@ -70,7 +71,7 @@ func explainConfigError(path string, err error) friendlyError {
 		return friendlyError{
 			Title:  "There are no settings yet",
 			Detail: msg,
-			Hint:   "start the agent once, without -pair or -rotate-token, to create them",
+			Hint:   "start the agent once, without -pair, -report or -rotate-token, to create them",
 		}
 	case strings.HasPrefix(msg, "parse "):
 		return friendlyError{
@@ -82,7 +83,7 @@ func explainConfigError(path string, err error) friendlyError {
 		return friendlyError{
 			Title:  "A folder in your settings doesn't exist",
 			Detail: msg,
-			Hint:   fmt.Sprintf(`check the path under "roots" in %s, or remove that folder from the list`, path),
+			Hint:   fmt.Sprintf(`check the path under "roots" in %s, switch that folder off, or remove it from the list`, path),
 		}
 	case errors.Is(err, fs.ErrPermission):
 		return friendlyError{
@@ -95,7 +96,7 @@ func explainConfigError(path string, err error) friendlyError {
 	return friendlyError{
 		Title:  "The agent couldn't start",
 		Detail: msg,
-		Hint:   "if this keeps happening, please report it and include the message above",
+		Hint:   "if this keeps happening, run  " + binaryName + " -report  and include the result when you report it",
 	}
 }
 

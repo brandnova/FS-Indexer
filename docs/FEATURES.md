@@ -102,8 +102,8 @@ Small features that fit the project's core job of finding your files from your p
 ### Milestone 4: Agent management
 - [x] Local web UI, step 1: dashboard and pairing page on a loopback-only listener (Host/Origin checks, session token, QR in the browser) (M)
 - [x] Smart double-click: opens the web UI when launched without a terminal, and on first run (M)
-- [ ] Folders page: add, remove, disable, per-folder options, folder picker; settings reload without a restart (M)
-- [ ] Ignore-rules editor with a "test a path" box (S)
+- [x] Folders page: add, remove, disable, per-folder options, folder picker; settings reload without a restart (M)
+- [x] Ignore-rules editor with a "test a path" box (S)
 - [ ] Start on login (Windows registry, macOS LaunchAgent, Linux autostart or systemd user unit) (M)
 - [ ] Launchers per OS: Windows shortcut/installer, macOS .app, Linux .desktop entry and icon (M)
 - [ ] Troubleshooter: `fsagent doctor` and a web page (M)
@@ -113,6 +113,10 @@ Small features that fit the project's core job of finding your files from your p
 - [ ] Disk-usage view (agent web UI and phone) (M) (new)
 - [ ] Explicit opt-in for whole-home or whole-drive indexing, with hard exclusions; reduce per-entry memory first (S)
 - [ ] gitignore-style `.ignore` file support (M)
+- [x] Dashboard redesign: sidebar app, getting-started checklist, dialogs, toasts, logo from `static/images/` (M) (new)
+- [x] Agent log file (timestamped, rotating) with a log viewer, "Report a problem" and `fsagent -report` (M) (new)
+- [x] Windows `.exe` icon and version info embedded (S) (new)
+- [ ] Icons for macOS and Linux through the `.app` bundle and `.desktop` file (part of the launchers item)
 
 ### Milestone 5: Security hardening
 Must be finished before any feature that serves file contents.
@@ -177,3 +181,4 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - 2026-10-09: Milestone 3, batch B: first-run walkthrough, demo mode, accessibility pass (contrast, touch targets, screen-reader support, text scaling, reduced motion), loading placeholders.
 - 2026-10-09: Milestone 3 complete: "About the agent" screen; agent startup banner, activity lines and friendly errors; new agent flags.
 - 2026-10-10: Milestone 4, slice 1: loopback dashboard with pairing QR, folders and activity; smart double-click and background mode (`-ui`, `-background`, `-stop`); single running agent; errors shown in the browser when there's no terminal.
+- 2026-10-11: Milestone 4, slice 2: Folders and Privacy pages with live settings reload, agent log file with viewer and problem reports, redesigned dashboard.

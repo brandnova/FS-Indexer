@@ -14,6 +14,7 @@ const displayName = "FS Indexer"
 // startupInfo is everything the banner needs besides the settings.
 type startupInfo struct {
 	ConfigPath  string
+	LogPath     string
 	Notice      string // e.g. "using ./config.json from the current folder..."
 	Host        string // this computer's address on the network; "" if unknown
 	Dashboard   string // the dashboard's address; "" if it is off
@@ -41,9 +42,12 @@ func printBanner(c *Console, cfg *Config, info startupInfo) {
 		c.OK("Welcome", "first start: your settings file was created")
 	}
 	c.OK("Settings", info.ConfigPath)
-	c.OK("Folders", rootLabels(cfg.Roots))
+	if info.LogPath != "" {
+		c.OK("Log file", info.LogPath)
+	}
+	c.OK("Folders", rootLabels(cfg.enabledRoots()))
 	if cfg.defaultRoots {
-		c.Hint(`These are your standard folders. To choose others, edit "roots" in the settings file.`)
+		c.Hint(`These are your standard folders. Change them in the dashboard, or in "roots" in the settings file.`)
 	}
 	if info.Host != "" {
 		c.OK("Address", fmt.Sprintf("%s:%d  (only devices on your network can connect)", info.Host, cfg.Port))
@@ -75,12 +79,12 @@ func reportScan(c *Console, cfg *Config, r ScanResult, first bool) {
 	if r.Skipped == 0 {
 		return
 	}
-	if r.Entries <= len(cfg.Roots) {
+	if r.Entries <= len(cfg.enabledRoots()) {
 		c.Warn("Your computer is blocking access to your folders, so nothing could be listed.")
 		c.Hint(permissionHint())
 		return
 	}
-	c.Warn(fmt.Sprintf("%s items couldn't be read (usually missing permissions). Run with -verbose to see which.", commas(r.Skipped)))
+	c.Warn(fmt.Sprintf("%s items couldn't be read (usually missing permissions). Run with -verbose to record which ones in the log file.", commas(r.Skipped)))
 }
 
 func permissionHint() string {

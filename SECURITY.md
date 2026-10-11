@@ -43,6 +43,8 @@ These are documented design limits of the current version, not vulnerabilities, 
 
 The agent has a small dashboard for the person at the computer (`http://127.0.0.1:<port>`). It listens on the loopback address only, so other devices on your network can't reach it. It opens with a one-time link; after that a private session cookie keeps you signed in. Every request is checked for the right Host and Origin, and every action needs a per-session token. That protects against malicious web pages and DNS-rebinding attacks. Programs that run as the same user on your computer can read the agent's settings and runtime files; that is normal for software you run yourself. Turn the dashboard off with `-no-web` or `"disable_web_ui": true`.
 
+Through the dashboard you can also add and remove shared folders. For that it lists folder names on the computer (never file names) to a signed-in dashboard only, and every change needs the session token. Shared folders can't be a whole drive or your whole home folder.
+
 ## In scope
 
 - Authentication or LAN-guard bypass

@@ -19,8 +19,10 @@ const appDirName = "fs-indexer"
 // Root is one folder to index. Label becomes the first segment of every
 // path under it (e.g. "Documents/cv/resume.pdf").
 type Root struct {
-	Path  string `json:"path"`
-	Label string `json:"label,omitempty"`
+	Path          string `json:"path"`
+	Label         string `json:"label,omitempty"`
+	Disabled      bool   `json:"disabled,omitempty"`       // switched off: kept in the settings, not shared
+	IncludeHidden bool   `json:"include_hidden,omitempty"` // also share hidden files in this folder
 }
 
 type Config struct {
@@ -38,6 +40,28 @@ type Config struct {
 	allowedNets  []*net.IPNet // parsed AllowedNetworks; not saved
 	firstRun     bool         // this run created the settings file
 	defaultRoots bool         // "roots" was empty, so the standard folders are used
+}
+
+// clone makes an independent copy, so settings can be changed without touching
+// the copy a running scan is using.
+func (c *Config) clone() *Config {
+	n := *c
+	n.Roots = append(make([]Root, 0, len(c.Roots)), c.Roots...)
+	n.ExtraIgnores = append(make([]string, 0, len(c.ExtraIgnores)), c.ExtraIgnores...)
+	n.AllowedNetworks = append(make([]string, 0, len(c.AllowedNetworks)), c.AllowedNetworks...)
+	n.allowedNets = append([]*net.IPNet(nil), c.allowedNets...)
+	return &n
+}
+
+// enabledRoots are the folders that are switched on.
+func (c *Config) enabledRoots() []Root {
+	out := make([]Root, 0, len(c.Roots))
+	for _, r := range c.Roots {
+		if !r.Disabled {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // ---------- where the config lives ----------
@@ -136,7 +160,7 @@ func LoadConfig(configPath string) (*Config, error) {
 }
 
 // ReadConfig reads an existing config without creating, normalizing or
-// rewriting anything. Used by -pair, which must never touch the file.
+// rewriting anything. Used by -pair and -report, which must never touch the file.
 func ReadConfig(configPath string) (*Config, error) {
 	cfg, err := readRaw(configPath)
 	if err != nil {
@@ -236,53 +260,71 @@ func (c *Config) validatePorts() error {
 	return nil
 }
 
+var errNotDir = errors.New("not a directory")
+
+// resolveDir follows symlinks and checks that the result is a folder.
+func resolveDir(abs string) (string, error) {
+	real, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return "", err
+	}
+	st, err := os.Stat(real)
+	if err != nil {
+		return "", err
+	}
+	if !st.IsDir() {
+		return "", errNotDir
+	}
+	return real, nil
+}
+
 // normalizeRoots expands ~, resolves to absolute real paths, fills labels,
-// and checks that every root exists and has a unique label.
+// and checks that every root exists and has a unique label. A folder that is
+// switched off may be missing (an unplugged drive, say).
 func (c *Config) normalizeRoots() error {
 	if len(c.Roots) == 0 {
 		return errors.New(`no roots configured and no standard folders were found - add at least one folder to "roots" in the config file`)
 	}
 
-	home, _ := os.UserHomeDir()
 	seen := map[string]bool{}
-
 	for i := range c.Roots {
 		r := &c.Roots[i]
 
-		p := r.Path
-		if p == "~" || strings.HasPrefix(p, "~/") || strings.HasPrefix(p, `~\`) {
-			p = filepath.Join(home, p[1:])
-		}
-
-		abs, err := filepath.Abs(p)
+		abs, err := filepath.Abs(expandTilde(r.Path))
 		if err != nil {
 			return fmt.Errorf("root %q: %w", r.Path, err)
 		}
-		real, err := filepath.EvalSymlinks(abs)
+		real, err := resolveDir(abs)
 		if err != nil {
-			return fmt.Errorf("root %q: %w", r.Path, err)
-		}
-		st, err := os.Stat(real)
-		if err != nil {
-			return fmt.Errorf("root %q: %w", r.Path, err)
-		}
-		if !st.IsDir() {
-			return fmt.Errorf("root %q is not a directory", r.Path)
+			if !r.Disabled {
+				if errors.Is(err, errNotDir) {
+					return fmt.Errorf("root %q is not a directory", r.Path)
+				}
+				return fmt.Errorf("root %q: %w", r.Path, err)
+			}
+			real = abs
 		}
 		r.Path = real
 
-		if r.Label == "" {
-			r.Label = filepath.Base(real)
+		if err := finishLabel(r, seen); err != nil {
+			return err
 		}
-		if r.Label == "" || r.Label == "." || r.Label == string(filepath.Separator) || strings.ContainsAny(r.Label, `/\`) {
-			return fmt.Errorf("root %q needs a simple \"label\" (no slashes)", r.Path)
-		}
-		key := strings.ToLower(r.Label)
-		if seen[key] {
-			return fmt.Errorf("duplicate root label %q - give each root a unique label", r.Label)
-		}
-		seen[key] = true
 	}
+	return nil
+}
+
+func finishLabel(r *Root, seen map[string]bool) error {
+	if r.Label == "" {
+		r.Label = filepath.Base(r.Path)
+	}
+	if r.Label == "" || r.Label == "." || r.Label == string(filepath.Separator) || strings.ContainsAny(r.Label, `/\`) {
+		return fmt.Errorf("root %q needs a simple \"label\" (no slashes)", r.Path)
+	}
+	key := strings.ToLower(r.Label)
+	if seen[key] {
+		return fmt.Errorf("duplicate root label %q - give each root a unique label", r.Label)
+	}
+	seen[key] = true
 	return nil
 }
 
@@ -313,6 +355,7 @@ func rootLabels(roots []Root) string {
 	return strings.Join(labels, ", ")
 }
 
+// saveConfig writes the settings through a temporary file, so a crash can't leave half a file.
 func saveConfig(configPath string, cfg *Config) error {
 	if dir := filepath.Dir(configPath); dir != "." {
 		if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -323,8 +366,12 @@ func saveConfig(configPath string, cfg *Config) error {
 	if err != nil {
 		return err
 	}
+	tmp := configPath + ".tmp"
 	// 0600: the file contains the access token.
-	return os.WriteFile(configPath, append(data, '\n'), 0o600)
+	if err := os.WriteFile(tmp, append(data, '\n'), 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, configPath)
 }
 
 func randomHex(n int) string {

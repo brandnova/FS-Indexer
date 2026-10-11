@@ -20,7 +20,7 @@ import (
 var backgroundMode bool
 
 // siblingPath puts a helper file next to the settings file: runtime.json and agent.log for the
-// default config.json, or <name>.runtime.json / <name>.log for a custom settings file.
+// default config.json, or <n>.runtime.json / <n>.log for a custom settings file.
 func siblingPath(configPath, plain, suffix string) string {
 	dir, base := filepath.Split(configPath)
 	if base == "config.json" {
@@ -118,20 +118,7 @@ func spawnBackground() error {
 	return cmd.Process.Release()
 }
 
-// openLogFile opens the background agent's log, starting a fresh file when it grows past 1 MB.
-func openLogFile(path string) (*os.File, error) {
-	if st, err := os.Stat(path); err == nil && st.Size() > 1<<20 {
-		_ = os.Rename(path, path+".1")
-	}
-	if dir := filepath.Dir(path); dir != "." {
-		if err := os.MkdirAll(dir, 0o700); err != nil {
-			return nil, err
-		}
-	}
-	return os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
-}
-
-// ---------- the browser ----------
+// ---------- the browser and the file manager ----------
 
 // openBrowser opens a link in the person's default browser.
 func openBrowser(link string) error {
@@ -148,6 +135,24 @@ func openBrowser(link string) error {
 		return err
 	}
 	go func() { _ = cmd.Wait() }() // clean up the helper process when it ends
+	return nil
+}
+
+// openFolder shows a folder in the file manager (Explorer, Finder, ...).
+func openFolder(dir string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", dir)
+	case "windows":
+		cmd = exec.Command("explorer", dir) // explorer reports "failure" even when it works; we ignore the result
+	default:
+		cmd = exec.Command("xdg-open", dir)
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go func() { _ = cmd.Wait() }()
 	return nil
 }
 

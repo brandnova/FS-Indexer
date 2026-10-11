@@ -166,6 +166,7 @@ Run `fsagent -h` for the full list. The useful ones:
 | `-stop` | Stop the agent that is running in the background |
 | `-no-web` | Don't start the dashboard |
 | `-no-open` | Don't open the browser automatically |
+| `-report` | Print a problem report (version, system, settings with the token removed, latest log lines) and exit |
 
 ## The dashboard
 
@@ -175,6 +176,10 @@ When the agent runs, it also serves a small dashboard for the person at the comp
 - **Later:** run `fsagent -ui` (on Windows, just double-click the agent). If the agent isn't running, it starts in the background.
 - **Stopping a background agent:** the **Quit** button in the dashboard, or `fsagent -stop`.
 - **Log file:** a background agent writes `agent.log` next to its settings file.
+
+## Logs and problem reports
+
+The agent keeps a log of what it does, with a timestamp for every line (`agent.log`, next to the settings file; it rotates at 2 MB and keeps 3 old files). The access token is never written to it. In the dashboard, **Activity & logs** shows it with filters and search, and **Report a problem** builds a report you can copy or download. Your token and your user name in paths are removed from it, and IP addresses are masked by default. From a terminal, `fsagent -report` prints the same report.
 
 ## Build Phases
 

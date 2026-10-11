@@ -19,7 +19,7 @@ FS Indexer does not collect your data. There are no accounts, no analytics, no a
 - It stores its settings (including the access token) in a local configuration file on your PC.
 - It does not read or upload the contents of your files.
 - It also tells paired phones where each chosen folder is on your PC (for example `/home/you/Documents`), so the app can show full file paths.
-- When it runs in the background, it writes a small log (`agent.log`, next to its settings file) with events such as when a phone on your network updated its file list. The log stays on your computer, and never contains the access token.
+- It keeps a log (`agent.log`, next to its settings file) of what it does, such as scans, folder changes, and when a phone on your network updated its file list or used a wrong token. The log stays on your computer and never contains the access token. A problem report is only created when you ask for it, and nothing is sent anywhere automatically.
 
 **On your phone (the app):**
 
