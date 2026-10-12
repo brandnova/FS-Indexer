@@ -7,10 +7,19 @@ import type { Candidate, PingResponse } from '../types';
 export const MIN_API_VERSION = 1;
 export const MAX_API_VERSION = 1;
 
-export type ApiErrorKind = 'unauthorized' | 'forbidden' | 'network' | 'timeout' | 'server' | 'incompatible';
+export type ApiErrorKind =
+  | 'unauthorized'
+  | 'badcode'
+  | 'forbidden'
+  | 'network'
+  | 'timeout'
+  | 'server'
+  | 'incompatible';
 
 const MESSAGES: Record<ApiErrorKind, string> = {
-  unauthorized: 'The PC rejected the token. Check it and try again.',
+  unauthorized: "This phone isn't allowed to use the PC any more. It may have been removed there. Pair again to continue.",
+  badcode:
+    "That pairing code didn't work. Each code works once and runs out after ten minutes: tap New code in the dashboard on your PC and try again.",
   forbidden: 'The PC refused the connection. It only accepts devices on its local network.',
   network: 'Could not reach the PC.',
   timeout: 'The PC did not respond in time.',
@@ -79,6 +88,46 @@ export async function apiRequest(c: Candidate, path: string, opts: RequestOption
       throw new ApiError('server', `The PC returned an error (${res.status}).`);
     }
     return res;
+  } catch (e) {
+    if (e instanceof ApiError) throw e;
+    throw new ApiError(timedOut ? 'timeout' : 'network');
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Trades a one-time pairing code for this phone's own key. */
+export async function redeemPairingCode(
+  c: Pick<Candidate, 'host' | 'port'>,
+  code: string,
+  deviceName: string,
+): Promise<string> {
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, 8000);
+
+  try {
+    const res = await fetch(`${baseUrl(c)}/pair`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, device_name: deviceName }),
+      signal: controller.signal,
+    });
+    if (res.status === 401) throw new ApiError('badcode');
+    if (res.status === 403) throw new ApiError('forbidden');
+    if (res.status === 404) {
+      throw new ApiError('incompatible', 'The agent on your PC is older than this app and has no pairing codes. Update the agent.');
+    }
+    if (res.status === 409) throw new ApiError('server', 'The PC already has too many phones paired. Remove one in its dashboard first.');
+    if (res.status === 429) throw new ApiError('server', 'Too many wrong codes. Wait a minute and try again.');
+    if (!res.ok) throw new ApiError('server', `The PC returned an error (${res.status}).`);
+
+    const body = (await res.json()) as { token?: unknown };
+    if (typeof body.token !== 'string' || !body.token) throw new ApiError('server');
+    return body.token;
   } catch (e) {
     if (e instanceof ApiError) throw e;
     throw new ApiError(timedOut ? 'timeout' : 'network');

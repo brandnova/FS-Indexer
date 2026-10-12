@@ -114,8 +114,8 @@ Small features that fit the project's core job of finding your files from your p
 
 ### Milestone 5: Security hardening
 Must be finished before any feature that serves file contents.
-- [ ] Per-device tokens via a one-time pairing code, `devices.json` on the agent, revoke a single phone (M)
-- [ ] Short-lived pairing codes so the QR stops being a permanent secret (S)
+- [x] Per-device tokens via a one-time pairing code, `devices.json` on the agent, revoke a single phone (M)
+- [x] Short-lived pairing codes so the QR stops being a permanent secret (S)
 - [ ] TLS with a self-signed cert; certificate fingerprint carried in the QR and pinned by the phone (M to L)
 
 ### Milestone 6: Files
@@ -189,3 +189,4 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - 2026-10-12: Milestone 4, slice 3: start on login on all three systems, macOS app and Linux packages, "Made by Brand Nova" credit in the agent and app.
 - 2026-10-12: Published v0.1.0-rc2 (pre-release) for Windows and macOS testing.
 - 2026-10-12: Milestone 4, slice 4: `fsagent -doctor` and the dashboard's "Check my setup" page. Milestone 4 complete.
+- 2026-10-12: Milestone 5, slice 1: per-phone keys, one-time pairing codes, paired-phones list.

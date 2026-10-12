@@ -109,3 +109,22 @@ Where each indexed folder lives on the PC, so a client can show real paths. Adde
 - `label` is the first segment of every path under that root in the index.
 - `path` is the absolute folder on the PC.
 - `sep` is the PC's path separator (`/` or `\`). To build a full path, join `path`, `sep`, and the rest of the index path with `/` replaced by `sep`.
+
+### Pairing: `POST /api/v1/pair` (no Authorization header)
+
+Trades a one-time pairing code (shown by the agent: in the terminal, in the QR code and in the dashboard) for this phone's own key.
+
+Request: `{"code": "ABCDE-FGHJK", "device_name": "Pixel 8"}` (the code is not case sensitive; spaces and dashes are ignored)
+
+Answers:
+- `200 {"token": "<64 hex>", "phone_id": "...", "pc_id": "...", "pc_name": "..."}` - use the token as `Authorization: Bearer <token>` from now on
+- `401 {"error": "invalid_code"}` - wrong, used or expired code (a code works once and lasts 10 minutes)
+- `404 {"error": "pairing_unavailable"}` - this agent has no pairing codes
+- `409` - too many phones are paired (20)
+- `429` - too many wrong attempts; see `Retry-After`
+
+The QR code carries `{"v":2,"host","port","code","id","name"}`. Agents before this change carried `{"v":1,"host","port","token","id","name"}`, which the app still understands.
+
+### Keys
+
+Every request except `/pair` needs `Authorization: Bearer <key>`. A key is either a phone's own key (from `/pair`) or, unless switched off in the dashboard (`disable_legacy_token`), the old shared token. The agent stores only a SHA-256 hash of each phone's key, in `devices.json`. Wrong keys and wrong codes count together toward the lockout (10 per minute per address).

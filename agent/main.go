@@ -25,13 +25,13 @@ func main() {
 	hostFlag := flag.String("host", "", "override the IP address shown in the pairing QR code")
 	noMDNS := flag.Bool("no-mdns", false, "don't let the app find this computer automatically")
 	showVersion := flag.Bool("version", false, "print the version and exit")
-	pair := flag.Bool("pair", false, "show the pairing QR code and token, then exit (does not start the agent)")
-	rotate := flag.Bool("rotate-token", false, "create a new access token, show the pairing QR code, then exit")
+	pair := flag.Bool("pair", false, "ask the running agent for a pairing code and show it (with a QR code), then exit")
+	rotate := flag.Bool("rotate-token", false, "replace the old shared token, then exit (phones paired with a code are not affected)")
 	report := flag.Bool("report", false, "print a problem report (the token is removed) and exit")
 	autostart := flag.String("autostart", "", "start the agent when you sign in: on, off or status")
 	doctor := flag.Bool("doctor", false, "check your setup and say what to fix, then exit")
-	quiet := flag.Bool("quiet", false, "print only warnings and errors (no banner, QR code or token)")
-	noQR := flag.Bool("no-qr", false, "don't draw the QR code; show the address and token only")
+	quiet := flag.Bool("quiet", false, "print only warnings and errors (no banner, QR code or pairing code)")
+	noQR := flag.Bool("no-qr", false, "don't draw the QR code; show the address and code only")
 	noColor := flag.Bool("no-color", false, "turn off colours (the NO_COLOR environment variable works too)")
 	background := flag.Bool("background", false, "run in the background with no window; the dashboard opens in your browser")
 	openUI := flag.Bool("ui", false, "open the dashboard in your browser, starting the agent in the background if needed")
@@ -40,6 +40,7 @@ func main() {
 	noOpen := flag.Bool("no-open", false, "don't open the browser automatically")
 	flag.BoolVar(&verbose, "verbose", false, "also record extra details in the log file, such as every path that couldn't be read")
 	flag.Parse()
+
 	if flag.Arg(0) == "doctor" {
 		*doctor = true // "fsagent doctor" works too
 	}
@@ -57,6 +58,7 @@ func main() {
 	configPath, notice := ResolveConfigPath(*configFlag)
 	runtimePath := siblingPath(configPath, "runtime.json", ".runtime.json")
 	logPath := siblingPath(configPath, "agent.log", ".log")
+	devicesPath := siblingPath(configPath, "devices.json", ".devices.json")
 
 	// Stop an agent that runs in the background.
 	if *stopAgent {
@@ -110,13 +112,12 @@ func main() {
 	}
 	logs.Infof("agent", "%s %s starting (%s/%s, %s, process %d)", displayName, versionLabel(), runtime.GOOS, runtime.GOARCH, mode, os.Getpid())
 
+	// Maintenance commands: touch the settings, print, exit. No server.
 	if *doctor {
 		code := runDoctorCommand(talk, configPath, logPath)
 		logs.Close()
 		os.Exit(code)
 	}
-
-	// Maintenance commands: touch the settings, print, exit. No server.
 	if *autostart != "" {
 		runAutostartCommand(talk, *autostart, configPath)
 		return
@@ -138,27 +139,20 @@ func main() {
 		return
 	}
 	if *rotate {
-		cfg, err := RotateToken(configPath)
-		if err != nil {
+		if _, err := RotateToken(configPath); err != nil {
 			fail(talk, explainConfigError(configPath, err))
 		}
-		logs.Infof("config", "the access token was replaced")
+		logs.Infof("config", "the old shared token was replaced")
 		talk.Blank()
-		talk.OK("Token", "a new access token was saved")
-		talk.Hint("Restart the agent for it to take effect, then pair your phones again.")
-		PrintPairing(talk, cfg, hostOrDetect(*hostFlag), !*noQR)
+		talk.OK("Shared token", "a new one was saved")
+		talk.Hint("Restart the agent for it to take effect. Phones paired with a code keep working; only phones paired the old way must pair again.")
 		talk.Blank()
 		return
 	}
 	if *pair {
-		cfg, err := ReadConfig(configPath)
-		if err != nil {
-			fail(talk, explainConfigError(configPath, err))
-		}
-		logs.Infof("pairing", "the pairing details were shown in the terminal")
-		PrintPairing(talk, cfg, hostOrDetect(*hostFlag), !*noQR)
-		talk.Blank()
-		return
+		code := runPairCommand(talk, runtimePath, !*noQR)
+		logs.Close()
+		os.Exit(code)
 	}
 
 	cfg, err := LoadConfig(configPath)
@@ -195,6 +189,19 @@ func main() {
 		}
 	}
 
+	// The paired phones, and the one-time pairing code.
+	devices, err := OpenDevices(devicesPath)
+	if err != nil {
+		fail(con, friendlyError{
+			Title:  "The list of paired phones is damaged",
+			Detail: err.Error(),
+			Hint:   "move " + devicesPath + " out of the way (the phones will have to pair again), then start the agent",
+		})
+	}
+	defer func() { _ = devices.Flush() }()
+	codes := NewPairingCodes(pairingCodeTTL)
+	logs.Infof("pairing", "%d phones are paired; the old shared token is %s", devices.Count(), map[bool]string{true: "off", false: "still accepted"}[cfg.DisableLegacyToken])
+
 	ctx, shutdown := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer shutdown()
 
@@ -210,7 +217,7 @@ func main() {
 		events.Addf(format, args...)
 	}
 
-	srv := NewServer(cfg, ix)
+	srv := NewServerWith(cfg, ix, ServerDeps{Devices: devices, Codes: codes})
 
 	// Listen first so a busy port fails before we show anything else.
 	ln, err := net.Listen("tcp", srv.Addr)
@@ -257,6 +264,8 @@ func main() {
 			HostFlag:   *hostFlag,
 			Discovery:  discovery,
 			Mode:       mode,
+			Devices:    devices,
+			Codes:      codes,
 			Quit:       shutdown,
 		})
 		if err != nil {
@@ -292,10 +301,10 @@ func main() {
 	events.Addf("Agent started (%s)", versionLabel())
 	printBanner(con, cfg, info)
 
-	// The pairing details stay on screen: they are never written to a file.
-	// Quiet runs (such as the login entry) skip them, so no link or code reaches a login log.
+	// The pairing code stays on screen: it is never written to a file or the log.
+	// Quiet runs (such as the login entry) skip it, so no code or link reaches a login log.
 	if !isChild && !*quiet {
-		PrintPairing(con, cfg, host, !*noQR)
+		PrintPairingCode(con, cfg, host, codes, !*noQR)
 		if ui != nil {
 			con.Blank()
 			con.Text("Dashboard link (works once):  " + ui.LoginURL(15*time.Minute, ""))

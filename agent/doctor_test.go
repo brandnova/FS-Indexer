@@ -190,7 +190,7 @@ func TestDoctorSeesARunningAgent(t *testing.T) {
 	wrong := cfg.clone()
 	wrong.Token = "not-the-token"
 	we := &doctorEnv{DoctorInput: DoctorInput{Config: wrong}}
-	if res, _ := checkAgent(we); res.Status != StatusFail || !strings.Contains(res.Detail, "token") {
+	if res, _ := checkAgent(we); res.Status != StatusWarn || !strings.Contains(res.Detail, "shared token") {
 		t.Errorf("a different token should be reported: %+v", res)
 	}
 

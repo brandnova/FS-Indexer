@@ -1,10 +1,11 @@
 import * as SecureStore from 'expo-secure-store';
-import { apiRequest, ping } from './api/client';
+import { ApiError, apiRequest, ping, redeemPairingCode } from './api/client';
 import { clearIndex } from './db';
 import { findDevice, type DiscoveredDevice } from './discovery';
-import type { Candidate, PairingInfo, PingResponse } from './types';
+import { deviceName } from './platform/deviceName';
+import type { Candidate, PairingInfo, PairingOffer, PingResponse } from './types';
 
-// The token lives in the OS keystore (Keychain / Keystore), not plain storage.
+// The key lives in the OS keystore (Keychain / Keystore), not plain storage.
 const KEY = 'pairing';
 
 export async function loadPairing(): Promise<PairingInfo | null> {
@@ -21,8 +22,19 @@ export async function savePairing(info: PairingInfo): Promise<void> {
   await SecureStore.setItemAsync(KEY, JSON.stringify(info));
 }
 
-/** Verifies the PC answers with this token, then saves the pairing. */
-export async function pairWith(c: Candidate): Promise<PairingInfo> {
+/**
+ * Pairs with a PC. With a one-time code, this phone gets a key of its own from the PC (the
+ * code is then useless). Offers from older agents carry the shared token instead.
+ * Verifies the PC answers with the key, then saves the pairing.
+ */
+export async function pairWith(offer: PairingOffer): Promise<PairingInfo> {
+  let token = offer.token;
+  if (!token) {
+    if (!offer.code) throw new ApiError('badcode');
+    token = await redeemPairingCode(offer, offer.code, deviceName());
+  }
+
+  const c: Candidate = { host: offer.host, port: offer.port, token };
   const res = await ping(c);
 
   const info: PairingInfo = {
@@ -51,7 +63,7 @@ export async function unpair(): Promise<void> {
 
 /**
  * Finds a paired PC again after its address changed. Looks it up by device id
- * via mDNS, confirms it answers with our token, and saves the new address.
+ * via mDNS, confirms it answers with our key, and saves the new address.
  * Returns null if it can't be found.
  */
 export async function relocate(current: PairingInfo): Promise<PairingInfo | null> {
@@ -84,26 +96,33 @@ async function pickReachableAddress(device: DiscoveredDevice, token: string): Pr
   return results.find((h) => h !== null) ?? null;
 }
 
-export interface QrCandidate extends Candidate {
-  id?: string;
-}
+/** What the QR code was meant to carry (kept for older imports). */
+export type QrCandidate = PairingOffer;
 
-/** Parses the JSON shown as a QR code by the agent. Returns null if it isn't one. */
-export function parseQrPayload(raw: string): QrCandidate | null {
+/**
+ * Parses the JSON shown as a QR code by the agent. Version 2 carries a one-time code;
+ * version 1 (older agents) carries the shared token. Returns null if it isn't a pairing code.
+ */
+export function parseQrPayload(raw: string): PairingOffer | null {
   try {
     const p = JSON.parse(raw);
-    if (
-      p?.v === 1 &&
-      typeof p.host === 'string' &&
-      Number.isInteger(p.port) &&
-      typeof p.token === 'string'
-    ) {
-      return { host: p.host, port: p.port, token: p.token, id: typeof p.id === 'string' ? p.id : undefined };
-    }
+    if (typeof p?.host !== 'string' || !Number.isInteger(p.port)) return null;
+    const id = typeof p.id === 'string' ? p.id : undefined;
+    if (p.v === 2 && typeof p.code === 'string') return { host: p.host, port: p.port, code: p.code, id };
+    if (p.v === 1 && typeof p.token === 'string') return { host: p.host, port: p.port, token: p.token, id };
   } catch {
     // not JSON
   }
   return null;
+}
+
+/** Forgives how people type a code: case, spaces, dashes, and O/I/L for 0/1/1. */
+export function normalizeCode(input: string): string {
+  return input
+    .toUpperCase()
+    .replace(/[\s-]/g, '')
+    .replace(/O/g, '0')
+    .replace(/[IL]/g, '1');
 }
 
 /** Parses "192.168.1.23:8080" (port optional, defaults to 8080). */

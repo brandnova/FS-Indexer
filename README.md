@@ -60,6 +60,10 @@ See [`docs/API.md`](docs/API.md) for the full API contract.
 - Offline substring search (tokenized, case-insensitive)
 - Runs on Android and iOS; OS-specific code is isolated in `src/platform/`
 
+### Connecting your phone
+
+Start the agent. It shows a QR code and a pairing code. In the app, tap **Scan QR code** and point the camera at it, or choose **Enter details manually** and type the address and the code. The code works once and runs out after ten minutes; the dashboard (**Connect a phone**) and `fsagent -pair` make a new one. Every phone gets its own key, so you can remove a single phone under **Paired phones** in the dashboard.
+
 ## Design Decisions
 
 - **Flat NDJSON, not a nested tree.** Memory stays flat on both ends at 200k+ files; the phone derives the tree from `parent`.

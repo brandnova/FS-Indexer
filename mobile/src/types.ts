@@ -9,11 +9,21 @@ export interface Entry {
   is_dir: boolean;
 }
 
-// What we need to talk to an agent.
+// What we need to talk to an agent: where it is, and this phone's own key.
 export interface Candidate {
   host: string;
   port: number;
   token: string;
+}
+
+// What a pairing QR code (or the manual form) gives us: where the PC is, plus either a
+// one-time pairing code (agents with per-phone keys) or the shared token (older agents).
+export interface PairingOffer {
+  host: string;
+  port: number;
+  code?: string;
+  token?: string;
+  id?: string;
 }
 
 // A verified, saved pairing.

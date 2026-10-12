@@ -388,36 +388,116 @@
   $('#picker-confirm').addEventListener('click', () => addFolder(picker.path, $('#picker-label').value.trim()));
 
   // ---------- connect a phone ----------
+  let lastQrKey = null;
+  let pairExpires = 0;
+  let pairRefreshing = false;
+
   async function loadPairing() {
     if (stopped) return;
     try {
-      const p = await api('/api/pairing');
-      tokenValue = p.token;
-      renderToken();
-      $('#address').textContent = p.address || 'unknown';
-      $('#pair-warning').hidden = Boolean(p.address);
+      renderPairing(await api('/api/pairing'));
+    } catch (e) { /* the status check shows the problem */ }
+    loadDevices();
+  }
 
-      const qr = $('#qr');
-      if (!p.address) {
-        qr.hidden = true;
-        lastAddress = null;
-      } else if (p.address !== lastAddress) {
-        lastAddress = p.address;
+  function renderPairing(p) {
+    pairExpires = p.expires_at;
+    $('#pair-code').textContent = p.code;
+    $('#address-code').textContent = p.code;
+    $('#address').textContent = p.address || 'unknown';
+    $('#pair-warning').hidden = Boolean(p.address);
+
+    const qr = $('#qr');
+    if (!p.address) {
+      qr.hidden = true;
+      lastQrKey = null;
+    } else {
+      const key = p.address + '|' + p.code;
+      if (key !== lastQrKey) {
+        lastQrKey = key;
         qr.src = '/api/pairing.svg?t=' + Date.now();
         qr.hidden = false;
       }
-      const others = p.others || [];
-      $('#others').hidden = others.length === 0;
-      $('#others-list').replaceChildren(...others.map((ip) => h('span', { class: 'chip' }, ip)));
+    }
+    const others = p.others || [];
+    $('#others').hidden = others.length === 0;
+    $('#others-list').replaceChildren(...others.map((ip) => h('span', { class: 'chip' }, ip)));
+    tickExpiry();
+  }
+
+  function tickExpiry() {
+    const note = $('#pair-expiry');
+    if (!pairExpires) { note.textContent = ''; return; }
+    const left = Math.round(pairExpires - Date.now() / 1000);
+    if (left <= 0) {
+      note.textContent = 'Getting a new code...';
+      if (currentPage === 'pair' && !pairRefreshing) {
+        pairRefreshing = true;
+        loadPairing().finally(() => { pairRefreshing = false; });
+      }
+      return;
+    }
+    note.textContent = 'Works once, for ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') + ' more';
+  }
+  setInterval(() => { if (!stopped && currentPage === 'pair') tickExpiry(); }, 1000);
+
+  $('#pair-new').addEventListener('click', async () => {
+    try {
+      renderPairing(await postJSON('/api/pairing/new'));
+      toast('A new code is ready');
+    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
+  });
+
+  async function loadDevices() {
+    try {
+      renderDevices(await api('/api/devices'));
     } catch (e) { /* the status check shows the problem */ }
   }
 
-  function renderToken() {
-    $('#token').textContent = tokenShown ? tokenValue : '\u2022'.repeat(16);
-    $('#token-toggle').textContent = tokenShown ? 'Hide' : 'Show';
+  function renderDevices(res) {
+    $('#phone-empty').hidden = res.devices.length > 0;
+    $('#phone-list').replaceChildren(...res.devices.map((d) =>
+      h('article', { class: 'phone-card' },
+        h('div', { class: 'phone-icon' }, icon('phone')),
+        h('div', { class: 'folder-meta' },
+          h('strong', null, d.name),
+          h('span', { class: 'folder-path' },
+            'Paired ' + fmtAgo(d.created_at) + ' · last seen ' + fmtAgo(d.last_seen) + (d.last_ip ? ' · ' + d.last_ip : ''))),
+        h('button', { class: 'btn danger', type: 'button', onClick: () => revokeDevice(d) }, icon('trash'), 'Remove'))));
+
+    $('#legacy-note').hidden = !res.legacy.enabled;
+    $('#legacy-text').textContent = res.legacy.last_used
+      ? 'An older version of the app used the old shared token ' + fmtAgo(res.legacy.last_used) + '. Update the app and pair again, then turn the shared token off.'
+      : 'The old shared token still works for phones paired before per-phone keys existed. Once every phone has paired again, turn it off.';
   }
-  $('#token-toggle').addEventListener('click', () => { tokenShown = !tokenShown; renderToken(); });
-  $('#token-copy').addEventListener('click', () => copyText(tokenValue, $('#token-copy'), 'Token copied'));
+
+  async function revokeDevice(d) {
+    const yes = await confirmDialog({
+      title: 'Remove ' + d.name + '?',
+      text: 'This phone can no longer read your file list. It can pair again with a new code.',
+      ok: 'Remove phone', danger: true,
+    });
+    if (!yes) return;
+    try {
+      await postJSON('/api/devices/revoke', { id: d.id });
+      toast(d.name + ' was removed');
+    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
+    loadDevices();
+  }
+
+  $('#legacy-off').addEventListener('click', async () => {
+    const yes = await confirmDialog({
+      title: 'Turn off the shared token?',
+      text: 'Phones that were paired the old way stop working until they pair again with a code. Phones paired with a code are not affected.',
+      ok: 'Turn it off', danger: true,
+    });
+    if (!yes) return;
+    try {
+      await postJSON('/api/devices/legacy', { enabled: false });
+      toast('The shared token is off');
+    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
+    loadDevices();
+  });
 
   // ---------- privacy and filters ----------
   async function loadRules() {

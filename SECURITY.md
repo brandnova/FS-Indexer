@@ -45,6 +45,8 @@ The agent has a small dashboard for the person at the computer (`http://127.0.0.
 
 Through the dashboard you can also add and remove shared folders. For that it lists folder names on the computer (never file names) to a signed-in dashboard only, and every change needs the session token. Shared folders can't be a whole drive or your whole home folder.
 
+Each phone has its own key. The PC keeps only a hash of it (in `devices.json`, readable only by you), so a copy of that file can't be used to read your file list. The QR code carries a one-time pairing code, not a permanent secret: a photo of the screen is useless after ten minutes or after one use. Ten wrong keys or codes in a minute lock that address out for a minute. Until the connection itself is encrypted, the code and the key cross your local network as plain HTTP: pair at home, not on a network you don't trust.
+
 ## In scope
 
 - Authentication or LAN-guard bypass

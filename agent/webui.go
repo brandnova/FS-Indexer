@@ -31,6 +31,8 @@ type WebOptions struct {
 	HostFlag   string // the -host override, if any
 	Discovery  string // how automatic discovery is doing, in words
 	Mode       string // "foreground" or "background"
+	Devices *DeviceStore  // the paired phones (made for you if left empty)
+	Codes   *PairingCodes // the current pairing code (made for you if left empty)
 	Quit       func() // asks the agent to shut down
 }
 
@@ -71,6 +73,18 @@ func NewWebUI(opts WebOptions) (*WebUI, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if opts.Codes == nil {
+		opts.Codes = NewPairingCodes(pairingCodeTTL)
+	}
+	if opts.Devices == nil {
+		d, err := OpenDevices(siblingPath(opts.ConfigPath, "devices.json", ".devices.json"))
+		if err != nil {
+			return nil, err
+		}
+		opts.Devices = d
+	}
+
 	return &WebUI{
 		opts:     opts,
 		started:  time.Now(),
@@ -199,6 +213,13 @@ func (ui *WebUI) Handler() http.Handler {
 	mux.HandleFunc("GET /api/autostart", ui.api(ui.handleAutostart))
 	mux.HandleFunc("POST /api/autostart", ui.api(ui.handleAutostartSave))
 	mux.HandleFunc("POST /api/doctor", ui.api(ui.handleDoctor))
+
+	mux.HandleFunc("POST /api/pairing/new", ui.api(ui.handlePairingNew))
+	mux.HandleFunc("GET /api/devices", ui.api(ui.handleDevices))
+	mux.HandleFunc("POST /api/devices/revoke", ui.api(ui.handleDeviceRevoke))
+	mux.HandleFunc("POST /api/devices/legacy", ui.api(ui.handleLegacyToken))
+	mux.HandleFunc("POST /internal/pair", ui.handleInternalPair)
+	mux.HandleFunc("POST /internal/status", ui.handleInternalStatus)
 
 	mux.HandleFunc("POST /internal/launch", ui.handleInternalLaunch)
 	mux.HandleFunc("POST /internal/quit", ui.handleInternalQuit)
@@ -425,49 +446,6 @@ func (ui *WebUI) handleStatus(rw http.ResponseWriter, r *http.Request, _ *sessio
 		Folders:       folders,
 		Events:        ui.opts.Events.Recent(),
 	})
-}
-
-func (ui *WebUI) handlePairing(rw http.ResponseWriter, r *http.Request, _ *session) {
-	cfg := ui.opts.Config
-	host := ui.host()
-	address := ""
-	if host != "" {
-		address = fmt.Sprintf("%s:%d", host, cfg.Port)
-	}
-	others := otherLANIPs(host)
-	if others == nil {
-		others = []string{}
-	}
-	writeJSON(rw, http.StatusOK, map[string]any{
-		"address": address,
-		"token":   cfg.Token,
-		"name":    cfg.DeviceName,
-		"others":  others,
-	})
-}
-
-func (ui *WebUI) handlePairingSVG(rw http.ResponseWriter, r *http.Request, _ *session) {
-	cfg := ui.opts.Config
-	host := ui.host()
-	if host == "" {
-		http.NotFound(rw, r)
-		return
-	}
-	payload, _ := json.Marshal(pairingPayload{
-		V:     1,
-		Host:  host,
-		Port:  cfg.Port,
-		Token: cfg.Token,
-		ID:    cfg.DeviceID,
-		Name:  cfg.DeviceName,
-	})
-	svg, err := qrSVG(string(payload))
-	if err != nil {
-		http.Error(rw, "could not draw the QR code", http.StatusInternalServerError)
-		return
-	}
-	rw.Header().Set("Content-Type", "image/svg+xml")
-	_, _ = rw.Write(svg)
 }
 
 func (ui *WebUI) handleRescan(rw http.ResponseWriter, r *http.Request, _ *session) {

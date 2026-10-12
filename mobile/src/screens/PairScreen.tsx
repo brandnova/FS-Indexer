@@ -1,13 +1,12 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { ChevronRight, Folder, Info, Monitor, QrCode, Sparkles, X } from 'lucide-react-native';
+import { ChevronRight, Folder, Monitor, QrCode, Sparkles, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { ApiError, toApiError } from '../api/client';
-import { useAgentInfo } from '../components/AgentInfo';
 import { startDiscovery, type DiscoveredDevice } from '../discovery';
-import { pairWith, parseAddress, parseQrPayload } from '../pairing';
+import { normalizeCode, pairWith, parseAddress, parseQrPayload } from '../pairing';
 import { platform } from '../platform';
-import type { Candidate, PairingInfo } from '../types';
+import type { PairingInfo, PairingOffer } from '../types';
 import { Button, Card, Text, fonts, radius, useTheme, useThemedStyles, type Palette } from '../ui';
 
 interface Props {
@@ -18,12 +17,11 @@ interface Props {
 export default function PairScreen({ onPaired, onDemo }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const [openAgentInfo, agentInfoModal] = useAgentInfo();
 
   const [mode, setMode] = useState<'form' | 'scan'>('form');
   const [showManual, setShowManual] = useState(false);
   const [address, setAddress] = useState('');
-  const [token, setToken] = useState('');
+  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ApiError | string | null>(null);
 
@@ -39,11 +37,11 @@ export default function PairScreen({ onPaired, onDemo }: Props) {
     return () => session?.stop();
   }, [mode]);
 
-  async function connect(c: Candidate) {
+  async function connect(offer: PairingOffer) {
     setBusy(true);
     setError(null);
     try {
-      onPaired(await pairWith(c));
+      onPaired(await pairWith(offer));
     } catch (e) {
       setError(toApiError(e));
       setBusy(false);
@@ -56,26 +54,27 @@ export default function PairScreen({ onPaired, onDemo }: Props) {
       setError('Enter the PC address like 192.168.1.23:8080');
       return;
     }
-    if (!token.trim()) {
-      setError('Enter the token shown by the agent.');
+    const clean = normalizeCode(code);
+    if (clean.length !== 10) {
+      setError('The pairing code has 10 letters and numbers, like ABCDE-FGHJK.');
       return;
     }
-    void connect({ ...addr, token: token.trim() });
+    void connect({ ...addr, code: clean });
   }
 
   function handleScan(data: string) {
     setMode('form');
-    const candidate = parseQrPayload(data);
-    if (!candidate) {
+    const offer = parseQrPayload(data);
+    if (!offer) {
       setError("That QR code isn't a pairing code from the agent.");
       return;
     }
-    if (expected && candidate.id && candidate.id !== expected.id) {
+    if (expected && offer.id && offer.id !== expected.id) {
       setError(`That QR code belongs to a different PC, not ${expected.name}.`);
       return;
     }
     setExpected(null);
-    void connect(candidate);
+    void connect(offer);
   }
 
   if (mode === 'scan') {
@@ -105,7 +104,6 @@ export default function PairScreen({ onPaired, onDemo }: Props) {
         <Text tone="muted">
           Start the agent on your computer. It shows a QR code: scan it here and your files are one tap away.
         </Text>
-        <Button title="What is the agent?" variant="ghost" size="sm" icon={Info} onPress={openAgentInfo} />
       </View>
 
       <Button
@@ -184,19 +182,23 @@ export default function PairScreen({ onPaired, onDemo }: Props) {
             editable={!busy}
           />
           <Text variant="label" tone="muted">
-            TOKEN
+            PAIRING CODE
           </Text>
           <TextInput
             style={styles.input}
-            value={token}
-            onChangeText={setToken}
-            placeholder="The token shown by the agent"
+            value={code}
+            onChangeText={setCode}
+            placeholder="ABCDE-FGHJK"
             placeholderTextColor={colors.muted}
-            accessibilityLabel="Token"
-            autoCapitalize="none"
+            accessibilityLabel="Pairing code"
+            autoCapitalize="characters"
             autoCorrect={false}
+            maxLength={14}
             editable={!busy}
           />
+          <Text variant="caption" tone="muted">
+            The code is shown by the agent and in its dashboard. It works once and runs out after ten minutes.
+          </Text>
           <Button title="Connect" loading={busy} onPress={submitManual} />
         </Card>
       ) : null}
@@ -222,8 +224,6 @@ export default function PairScreen({ onPaired, onDemo }: Props) {
         </Text>
         <Button title="Try the demo" variant="tonal" icon={Sparkles} disabled={busy} onPress={onDemo} />
       </View>
-
-      {agentInfoModal}
     </ScrollView>
   );
 }

@@ -124,11 +124,39 @@ func (e *doctorEnv) probe() {
 			e.running = true
 			e.remote = remoteInfo{DeviceID: body.DeviceID, Version: body.Version, APIVersion: body.APIVersion, FileCount: body.FileCount, Scanning: body.Scanning}
 		case http.StatusUnauthorized:
+			// The agent is there but doesn't take the shared token (it may be switched off): ask it directly.
 			e.running = true
-			e.tokenMismatch = true
+			if info, ok := e.askRunningAgent(); ok {
+				e.remote = info
+			} else {
+				e.tokenMismatch = true
+			}
 		default:
 			e.probeNote = fmt.Sprintf("something is using that port and answered with status %d", resp.StatusCode)
 	}
+}
+
+// askRunningAgent uses the secret in the runtime file, which only the same user can read.
+func (e *doctorEnv) askRunningAgent() (remoteInfo, bool) {
+	rt, err := readRuntime(siblingPath(e.ConfigPath, "runtime.json", ".runtime.json"))
+	if err != nil {
+		return remoteInfo{}, false
+	}
+	body, err := callRunning(rt, "/internal/status")
+	if err != nil {
+		return remoteInfo{}, false
+	}
+	var out struct {
+		DeviceID   string `json:"device_id"`
+		Version    string `json:"version"`
+		APIVersion int    `json:"api_version"`
+		FileCount  int    `json:"file_count"`
+		Scanning   bool   `json:"scanning"`
+	}
+	if json.Unmarshal(body, &out) != nil {
+		return remoteInfo{}, false
+	}
+	return remoteInfo{DeviceID: out.DeviceID, Version: out.Version, APIVersion: out.APIVersion, FileCount: out.FileCount, Scanning: out.Scanning}, true
 }
 
 // ---------- the list of checks ----------
@@ -144,6 +172,7 @@ var doctorChecks = []doctorCheck{
 	{"folders", checkFolders},
 	{"network", checkNetwork},
 	{"agent", checkAgent},
+	{"phones", checkPhones},
 	{"phone-port", checkPhonePort},
 	{"dashboard", checkDashboardPort},
 	{"index", checkIndex},
@@ -326,9 +355,9 @@ func checkAgent(e *doctorEnv) (Check, bool) {
 
 	switch {
 		case e.tokenMismatch:
-			c.Status = StatusFail
-			c.Detail = fmt.Sprintf("An agent is running on port %d, but it doesn't accept the access token in this settings file.", cfg.Port)
-			c.Fix = "It was probably started with a different settings file (-config). Stop it with  " + binaryName + " -stop  and start it again."
+			c.Status = StatusWarn
+			c.Detail = fmt.Sprintf("An agent is answering on port %d, but this check can't read its details: the shared token is switched off, or it was started with a different settings file.", cfg.Port)
+			c.Fix = "Open Check my setup in the dashboard instead: it asks the running agent directly."
 		case !e.running && e.probeNote != "":
 			c.Status = StatusWarn
 			c.Detail = fmt.Sprintf("Port %d is used by something else: %s.", cfg.Port, e.probeNote)
@@ -356,7 +385,7 @@ func checkPhonePort(e *doctorEnv) (Check, bool) {
 	e.probe()
 	c := Check{Title: "Port for your phone"}
 
-	if e.running && !e.tokenMismatch {
+	if e.running {
 		c.Status = StatusOK
 		c.Detail = fmt.Sprintf("The agent is listening on port %d.", cfg.Port)
 		return c, true
@@ -373,6 +402,39 @@ func checkPhonePort(e *doctorEnv) (Check, bool) {
 	ln.Close()
 	c.Status = StatusOK
 	c.Detail = fmt.Sprintf("Port %d is free for the agent.", cfg.Port)
+	return c, true
+}
+
+func checkPhones(e *doctorEnv) (Check, bool) {
+	cfg := e.Config
+	if cfg == nil {
+		return Check{}, false
+	}
+	c := Check{Title: "Paired phones", Status: StatusInfo}
+
+	devices, err := readDevicesFile(siblingPath(e.ConfigPath, "devices.json", ".devices.json"))
+	if err != nil {
+		c.Status = StatusFail
+		c.Detail = "The list of paired phones is damaged: " + err.Error()
+		c.Fix = "Move devices.json out of the settings folder. The phones will have to pair again."
+		return c, true
+	}
+
+	var parts []string
+	if len(devices) == 0 {
+		parts = append(parts, "No phone is paired yet. Open Connect a phone in the dashboard to pair one.")
+	} else {
+		names := make([]string, len(devices))
+		for i, d := range devices {
+			names[i] = d.Name
+		}
+		c.Status = StatusOK
+		parts = append(parts, fmt.Sprintf("%d paired: %s", len(devices), strings.Join(names, ", ")))
+	}
+	if !cfg.DisableLegacyToken {
+		parts = append(parts, "The old shared token is still accepted, for phones paired before per-phone keys existed. Turn it off under Connect a phone once every phone has paired again.")
+	}
+	c.Detail = strings.Join(parts, "\n")
 	return c, true
 }
 

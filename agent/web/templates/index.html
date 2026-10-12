@@ -129,6 +129,12 @@
                   <li><span class="step-num">2</span><span>Point the camera at this code.</span></li>
                   <li><span class="step-num">3</span><span>Tap <strong>Update</strong> in the app. Your files appear.</span></li>
                 </ol>
+                <div class="code-box">
+                  <span class="muted small">Pairing code</span>
+                  <code class="big-code" id="pair-code">-</code>
+                  <span class="muted small" id="pair-expiry"></span>
+                </div>
+                <div class="btn-row"><button class="btn tonal" id="pair-new" type="button"><svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>New code</button></div>
                 <p id="pair-warning" class="alert" hidden><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg><span>The agent couldn't work out this computer's network address. Are you connected to Wi-Fi or a network cable? You can set the address yourself with the <code>-host</code> option.</span></p>
               </div>
             </div>
@@ -139,19 +145,25 @@
             <p class="muted">In the app choose &ldquo;Enter details manually&rdquo; and type:</p>
             <dl class="kv">
               <dt>Address</dt><dd><code id="address">-</code></dd>
-              <dt>Token</dt>
-              <dd>
-                <code id="token"></code>
-                <button class="link" id="token-toggle" type="button">Show</button>
-                <button class="link" id="token-copy" type="button">Copy</button>
-              </dd>
+              <dt>Code</dt><dd><code id="address-code">-</code></dd>
             </dl>
             <div id="others" hidden>
               <p class="muted small">This computer also has other addresses. If the QR code doesn't work, try one of these in manual entry:</p>
               <div class="chips" id="others-list"></div>
             </div>
-            <p class="notice"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg><span>Anyone who scans this code can read your file list, so show it only to your own devices.</span></p>
+            <p class="notice"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg><span>Each code works once and stops working after ten minutes, so a photo of the screen can't be used later. Show it only to your own devices.</span></p>
             <p class="muted small">Still can't connect? <a href="#doctor">Check my setup</a>.</p>
+          </section>
+
+          <section class="card">
+            <h2>Paired phones</h2>
+            <p class="muted small">Each phone gets its own key. Remove a phone here and it can no longer read your file list.</p>
+            <div class="stack" id="phone-list"></div>
+            <p class="muted small" id="phone-empty" hidden>No phone is paired yet.</p>
+            <div class="alert" id="legacy-note" hidden>
+              <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+              <div><span id="legacy-text"></span> <button class="link" id="legacy-off" type="button">Turn off the shared token</button></div>
+            </div>
           </section>
         </section>
 

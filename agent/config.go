@@ -36,6 +36,9 @@ type Config struct {
 	ExtraIgnores    []string `json:"extra_ignores"`
 	IncludeHidden   bool     `json:"include_hidden"`
 	AllowedNetworks []string `json:"allowed_networks"`
+	// DisableLegacyToken stops the old shared token from working. New installs start with it
+	// switched off; settings files from before per-phone keys keep it on until the person turns it off.
+	DisableLegacyToken bool `json:"disable_legacy_token"`
 
 	allowedNets  []*net.IPNet // parsed AllowedNetworks; not saved
 	firstRun     bool         // this run created the settings file
@@ -208,6 +211,7 @@ func defaultConfig() *Config {
 		Roots:           []Root{},
 		ExtraIgnores:    []string{},
 		AllowedNetworks: []string{},
+		DisableLegacyToken: true,
 	}
 }
 
