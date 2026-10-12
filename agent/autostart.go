@@ -99,8 +99,24 @@ func exePath() (string, error) {
 	return p, nil
 }
 
+// isTemporaryPath reports whether p is inside the system's temporary folder, or is a
+// "go run" build. Both the plain and the symlink-resolved forms of each path are compared:
+// macOS keeps /var as a link to /private/var, and Windows can show the same folder under a
+// short name (RUNNER~1) or its long one.
 func isTemporaryPath(p string) bool {
-	return pathInside(p, resolvedPath(os.TempDir())) || strings.Contains(p, "go-build")
+	if strings.Contains(p, "go-build") {
+		return true
+	}
+	tmpDirs := []string{os.TempDir(), resolvedPath(os.TempDir())}
+	paths := []string{p, resolvedPath(p)}
+	for _, tmp := range tmpDirs {
+		for _, q := range paths {
+			if pathInside(q, tmp) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // ---------- file contents (the same on every system, so they can be tested everywhere) ----------
