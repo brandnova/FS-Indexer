@@ -3,6 +3,7 @@ import { Download, Info, Moon, Monitor, Settings as SettingsIcon, Sun, Unlink, W
 import type { ReactNode } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useAgentInfo } from '../components/AgentInfo';
+import BrandFooter from '../components/BrandFooter';
 import { formatRelative } from '../format';
 import { unpair } from '../pairing';
 import { platform } from '../platform';
@@ -134,6 +135,7 @@ export default function SettingsScreen({ onUnpaired }: { onUnpaired: () => void 
         <Card style={styles.cardGap}>
           <InfoRow label="App version" value={Constants.expoConfig?.version ?? '-'} />
           {demo ? null : <InfoRow label="Agent version" value={s.remote?.version ?? '-'} />}
+          <BrandFooter />
           <ActionRow
             icon={Info}
             title="About the agent"

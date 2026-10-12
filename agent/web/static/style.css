@@ -271,3 +271,8 @@ body.center .card { text-align: center; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- brand link ---------- */
+.brand-link { display: block; padding: 6px 12px 0; color: var(--muted); font-size: 0.8rem; text-decoration: none; }
+.brand-link:hover { color: var(--primary); text-decoration: underline; }
+@media (max-width: 860px) { .brand-link { display: none; } }

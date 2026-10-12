@@ -167,6 +167,7 @@ Run `fsagent -h` for the full list. The useful ones:
 | `-no-web` | Don't start the dashboard |
 | `-no-open` | Don't open the browser automatically |
 | `-report` | Print a problem report (version, system, settings with the token removed, latest log lines) and exit |
+| `-autostart on\|off\|status` | Start the agent quietly when you sign in (or check whether it does). Also in the dashboard under Settings. |
 
 ## The dashboard
 
@@ -202,3 +203,12 @@ See [`docs/FEATURES.md`](docs/FEATURES.md) for what's shipped, MVP progress by p
 - License: [MIT](LICENSE)
 - Security policy and known limitations: [SECURITY.md](SECURITY.md)
 - Privacy policy: [docs/PRIVACY.md](docs/PRIVACY.md)
+
+## Launchers and start on login
+
+- **Windows:** double-click `fsagent.exe`. The dashboard opens in your browser.
+- **macOS:** unzip `FS-Indexer_<version>_macOS_<arch>.app.zip` and open **FS Indexer**. (Not signed yet: right-click, then Open, the first time.)
+- **Linux:** install the `.deb` or `.rpm`. **FS Indexer** appears in your applications menu.
+- **Start on login:** turn it on under Settings in the dashboard, or run `fsagent -autostart on`. It starts quietly and never opens a window. Turn it off the same way.
+
+Made by [Brand Nova](https://brandnova.pythonanywhere.com).

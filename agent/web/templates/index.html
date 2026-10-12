@@ -30,6 +30,7 @@
     <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
     <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
     <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2zM12 10v5M12 18h.01"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h9M19 7h1M4 12h3M13 12h7M4 17h11M21 17h-1"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="12" r="2.2"/><circle cx="18" cy="17" r="2.2"/></symbol>
   </svg>
 
   <div class="app">
@@ -51,11 +52,13 @@
         <a class="nav-item" href="#pair" data-page="pair"><svg class="icon" aria-hidden="true"><use href="#i-phone"></use></svg><span>Connect a phone</span></a>
         <a class="nav-item" href="#rules" data-page="rules"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg><span>Privacy &amp; filters</span></a>
         <a class="nav-item" href="#activity" data-page="activity"><svg class="icon" aria-hidden="true"><use href="#i-activity"></use></svg><span>Activity &amp; logs</span></a>
+        <a class="nav-item" href="#settings" data-page="settings"><svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg><span>Settings</span></a>
       </nav>
 
       <div class="sidebar-foot">
         <button class="btn ghost block" id="open-report" type="button"><svg class="icon" aria-hidden="true"><use href="#i-help"></use></svg>Report a problem</button>
         <button class="btn ghost block danger-text" id="quit" type="button"><svg class="icon" aria-hidden="true"><use href="#i-power"></use></svg>Quit the agent</button>
+        <a class="brand-link" href="{{.BrandURL}}" target="_blank" rel="noopener noreferrer">Made by Brand Nova</a>
       </div>
     </aside>
 
@@ -213,6 +216,29 @@
             </div>
             <div class="log-view" id="log-view" tabindex="0" aria-label="Log lines"></div>
             <p class="muted small">Log file: <code id="log-path">-</code></p>
+          </section>
+        </section>
+        <!-- ============ Settings ============ -->
+        <section class="page" data-page="settings" hidden>
+          <section class="card">
+            <div class="row-between">
+              <div>
+                <h2>Start when I sign in</h2>
+                <p class="muted small">The agent starts quietly in the background each time you sign in to this computer, so your phone can always update. It never opens a window by itself.</p>
+              </div>
+              <label class="switch"><input type="checkbox" id="autostart-switch" aria-label="Start when I sign in" disabled><span class="track"></span></label>
+            </div>
+            <p class="alert" id="autostart-error" hidden></p>
+          </section>
+
+          <section class="card">
+            <h2>About</h2>
+            <dl class="kv">
+              <dt>Version</dt><dd>{{.Version}}</dd>
+              <dt>License</dt><dd>MIT License</dd>
+              <dt>Made by</dt><dd><a href="{{.BrandURL}}" target="_blank" rel="noopener noreferrer">Brand Nova</a></dd>
+            </dl>
+            <p class="muted small">Your files stay on your computer. The agent shares only file names, and only with phones you have paired.</p>
           </section>
         </section>
       </main>

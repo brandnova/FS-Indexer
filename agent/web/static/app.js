@@ -72,7 +72,7 @@
   };
 
   // ---------- state and API ----------
-  const PAGES = { home: 'Home', folders: 'Folders', pair: 'Connect a phone', rules: 'Privacy & filters', activity: 'Activity & logs' };
+  const PAGES = { home: 'Home', folders: 'Folders', pair: 'Connect a phone', rules: 'Privacy & filters', activity: 'Activity & logs', settings: 'Settings' };
   const state = { status: null, folders: null, rules: null, logLines: [] };
   let currentPage = 'home';
   let stopped = false;
@@ -165,6 +165,7 @@
     if (name === 'pair') loadPairing();
     if (name === 'rules') loadRules();
     if (name === 'activity') { renderFeed(); if (!$('#panel-log').hidden) loadLogs(); }
+    if (name === 'settings') loadAutostart();
   }
 
   // ---------- status (all pages) ----------
@@ -547,6 +548,32 @@
       await postJSON('/api/quit');
       showStopped('The agent has stopped', 'You can close this tab. Start the agent again whenever you want to update your phone.');
     } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
+  });
+
+  // ---------- settings ----------
+  async function loadAutostart() {
+    const box = $('#autostart-switch');
+    const note = $('#autostart-error');
+    try {
+      const a = await api('/api/autostart');
+      box.checked = a.enabled;
+      box.disabled = !a.supported;
+      note.hidden = !a.detail;
+      note.textContent = a.detail || '';
+    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
+  }
+
+  $('#autostart-switch').addEventListener('change', async (e) => {
+    const box = e.target;
+    const wanted = box.checked;
+    box.disabled = true;
+    try {
+      await postJSON('/api/autostart', { enabled: wanted });
+      toast(wanted ? 'The agent will start when you sign in' : 'The agent won\'t start by itself any more');
+    } catch (err) {
+      if (err.message !== 'locked') toast(err.message, 'bad');
+    }
+    await loadAutostart(); // shows what is really set now
   });
 
   // ---------- start ----------

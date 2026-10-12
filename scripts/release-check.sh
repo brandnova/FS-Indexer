@@ -31,6 +31,14 @@ else
   echo "Build numbers are managed by EAS (remote): skipping the versionCode check."
 fi
 
+# Packaging inputs: GoReleaser reads these while building the Linux packages and the macOS app.
+[[ -f branding/icon-256.png && -f branding/icon-512.png ]] || fail "branding/icon-256.png and branding/icon-512.png are missing (the Linux packages need them)"
+[[ -f packaging/linux/fsagent.desktop ]] || fail "packaging/linux/fsagent.desktop is missing"
+[[ -f branding/AppIcon.icns ]] || echo "WARN: branding/AppIcon.icns is missing, so the macOS app will have no icon (make it with png2icns)"
+if [[ -f agent/winres/winres.json ]] && ! grep -Eq "\"(file|product)_version\": *\"${base//./\\.}\.0\"" agent/winres/winres.json; then
+  echo "WARN: agent/winres/winres.json doesn't say ${base}.0, so the Windows file version will be out of date (edit it, run 'go-winres make' in agent/, commit)"
+fi
+
 echo "Checking go.mod is tidy..."
 (cd agent && go mod tidy)
 git diff --quiet -- agent/go.mod agent/go.sum || fail "go mod tidy changed agent/go.mod or go.sum: review the change, commit it, and run this check again"

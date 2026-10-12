@@ -28,6 +28,7 @@ func main() {
 	pair := flag.Bool("pair", false, "show the pairing QR code and token, then exit (does not start the agent)")
 	rotate := flag.Bool("rotate-token", false, "create a new access token, show the pairing QR code, then exit")
 	report := flag.Bool("report", false, "print a problem report (the token is removed) and exit")
+	autostart := flag.String("autostart", "", "start the agent when you sign in: on, off or status")
 	quiet := flag.Bool("quiet", false, "print only warnings and errors (no banner, QR code or token)")
 	noQR := flag.Bool("no-qr", false, "don't draw the QR code; show the address and token only")
 	noColor := flag.Bool("no-color", false, "turn off colours (the NO_COLOR environment variable works too)")
@@ -41,6 +42,7 @@ func main() {
 
 	if *showVersion {
 		fmt.Printf("%s %s (%s %s/%s)\n", binaryName, version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+		fmt.Printf("%s · %s\n", brandLine, brandURL)
 		return
 	}
 
@@ -67,10 +69,14 @@ func main() {
 		return
 	}
 
-	// A click (Windows Explorer), -ui or -background: show the dashboard of the
-	// running agent, or start one in the background.
+	// A click (Windows Explorer), the .app or menu entry (-ui), or -background: show the
+	// dashboard of the running agent, or start one in the background.
 	if !isChild && (*background || *openUI || (flag.NFlag() == 0 && startedByExplorer())) {
 		if link, ok := reopenRunning(runtimePath); ok {
+			if *noOpen {
+				talk.Text("The agent is already running.")
+				return
+			}
 			talk.Text("The agent is already running. Opening the dashboard...")
 			if err := openBrowser(link); err != nil {
 				talk.Text("Open this link in your browser: " + link)
@@ -101,6 +107,10 @@ func main() {
 	logs.Infof("agent", "%s %s starting (%s/%s, %s, process %d)", displayName, versionLabel(), runtime.GOOS, runtime.GOARCH, mode, os.Getpid())
 
 	// Maintenance commands: touch the settings, print, exit. No server.
+	if *autostart != "" {
+		runAutostartCommand(talk, *autostart, configPath)
+		return
+	}
 	if *report {
 		cfg, err := ReadConfig(configPath)
 		if err != nil {
@@ -272,7 +282,9 @@ func main() {
 	events.Addf("Agent started (%s)", versionLabel())
 	printBanner(con, cfg, info)
 
-	if !isChild { // the pairing details stay on screen: they are never written to a file
+	// The pairing details stay on screen: they are never written to a file.
+	// Quiet runs (such as the login entry) skip them, so no link or code reaches a login log.
+	if !isChild && !*quiet {
 		PrintPairing(con, cfg, host, !*noQR)
 		if ui != nil {
 			con.Blank()
@@ -281,6 +293,7 @@ func main() {
 		}
 		con.Blank()
 		con.Text("Keep this window open while you use the app. Press Ctrl+C to stop.")
+		con.Hint(brandLine + " · " + brandURL)
 		con.Blank()
 	}
 

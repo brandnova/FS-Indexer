@@ -56,7 +56,7 @@ Work top to bottom: each milestone builds on the one before it. Effort: S = unde
 Goal: anyone can download, install and trust a first public version.
 - [ ] Decide the final project name and rename everything before publishing (S) (deferred: the working name is fine until publishing)
 - [x] LICENSE (MIT) and SECURITY.md (S)
-- [ ] README screenshots or a short GIF (S) (after Milestone 3)
+- [x] README screenshots or a short GIF (S) (after Milestone 3)
 - [x] Agent keeps its config in the OS config folder by default (`-config` still overrides) (S) (new)
 - [x] Agent `-version` flag, with the version injected at build time (S) (new)
 - [x] Agent `-pair` flag to reprint the pairing QR and token, and `-rotate-token` to generate a new token (S) (new)
@@ -104,8 +104,8 @@ Small features that fit the project's core job of finding your files from your p
 - [x] Smart double-click: opens the web UI when launched without a terminal, and on first run (M)
 - [x] Folders page: add, remove, disable, per-folder options, folder picker; settings reload without a restart (M)
 - [x] Ignore-rules editor with a "test a path" box (S)
-- [ ] Start on login (Windows registry, macOS LaunchAgent, Linux autostart or systemd user unit) (M)
-- [ ] Launchers per OS: Windows shortcut/installer, macOS .app, Linux .desktop entry and icon (M)
+- [x] Start on login (Windows registry, macOS LaunchAgent, Linux autostart or systemd user unit) (M)
+- [x] Launchers per OS: Windows shortcut/installer, macOS .app, Linux .desktop entry and icon (M)
 - [ ] Troubleshooter: `fsagent doctor` and a web page (M)
 - [ ] System tray or menu-bar icon: Open dashboard, Show pairing code, Pause sharing, Quit (M; macOS needs cgo, GNOME needs an extension)
 - [ ] Scheduled rescans and a "pause sharing" switch (S)
@@ -129,11 +129,15 @@ Must be finished before any feature that serves file contents.
 - [ ] Open, preview and share files from the phone (M)
 - [ ] Upload from phone into a single configured drop folder on the PC (M, needs Milestone 5)
 
-### Milestone 7: Scale and reach
-- [ ] Manage multiple PCs from one app: pair several agents, switch between them, browse or search per PC or across all (L)
-- [ ] Phone as an additional source: index and search folders chosen on the phone, Android first (L, builds on multi-PC)
-- [ ] Delta sync, file watcher for live updates, resumable sync (L, driven by real numbers)
-- [ ] Real fuzzy search (FTS5 trigram) with ranking (M)
+## Milestone 7: Brand and monetization
+
+- [x] Brand identity line and About surfaces in the app, the agent dashboard, the terminal banner and the OS metadata (S)
+- [ ] Brand-use note in the README: the MIT licence covers the code, not the Brand Nova name or logo (S)
+- [ ] Choose the monetization model (a short decision note in docs/) (S)
+- [ ] Support links (GitHub Sponsors, Ko-fi or similar) in the README, the agent dashboard and the app About screen (S)
+- [ ] Optional: supporter / tip jar purchase in the app (S-M)
+- [ ] Optional: a one-time paid unlock for the features that justify it (M-L; fits best after Milestone 6)
+- [ ] Store paperwork for payments: pricing, tax and payout setup, purchase disclosures (S)
 
 ### Milestone 8: Publishing
 - [ ] Linux packages (`.deb`, `.rpm`), Homebrew tap, Scoop and winget manifests (M)
@@ -165,6 +169,11 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - [ ] Diagnostics export (version, OS and settings with the token removed) for bug reports
 - [ ] Log viewer in the dashboard, with a rolling log file
 - [ ] "Open in file manager" link per folder
+- [ ] Several PCs in one app (one database per PC, a PC switcher)
+- [ ] The phone as an extra source (index its own files into the same search)
+- [ ] Faster syncing: delta sync, a file watcher on the agent, resumable transfers (only if real numbers show it's needed)
+- [ ] Smarter search: fuzzy matching and SQLite FTS5
+- [ ] Remote access through a hosted relay (long term; it would need a subscription to cover server costs, and it changes the "nothing leaves your network" promise)
 
 ## Changelog
 
@@ -182,3 +191,4 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - 2026-10-09: Milestone 3 complete: "About the agent" screen; agent startup banner, activity lines and friendly errors; new agent flags.
 - 2026-10-10: Milestone 4, slice 1: loopback dashboard with pairing QR, folders and activity; smart double-click and background mode (`-ui`, `-background`, `-stop`); single running agent; errors shown in the browser when there's no terminal.
 - 2026-10-11: Milestone 4, slice 2: Folders and Privacy pages with live settings reload, agent log file with viewer and problem reports, redesigned dashboard.
+- 2026-10-12: Milestone 4, slice 3: start on login on all three systems, macOS app and Linux packages, "Made by Brand Nova" credit in the agent and app.

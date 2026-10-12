@@ -196,6 +196,8 @@ func (ui *WebUI) Handler() http.Handler {
 	mux.HandleFunc("GET /api/logs/download", ui.api(ui.handleLogDownload))
 	mux.HandleFunc("POST /api/logs/open", ui.api(ui.handleLogOpen))
 	mux.HandleFunc("GET /api/report", ui.api(ui.handleReport))
+	mux.HandleFunc("GET /api/autostart", ui.api(ui.handleAutostart))
+	mux.HandleFunc("POST /api/autostart", ui.api(ui.handleAutostartSave))
 
 	mux.HandleFunc("POST /internal/launch", ui.handleInternalLaunch)
 	mux.HandleFunc("POST /internal/quit", ui.handleInternalQuit)
@@ -321,9 +323,10 @@ func (ui *WebUI) handleIndex(rw http.ResponseWriter, r *http.Request) {
 	}
 	rw.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = ui.tpl.ExecuteTemplate(rw, "index.html", map[string]string{
-		"CSRF":    s.csrf,
-		"Name":    displayName,
-		"Version": versionLabel(),
+		"CSRF":     s.csrf,
+		"Name":     displayName,
+		"Version":  versionLabel(),
+		"BrandURL": brandURL,
 	})
 }
 
