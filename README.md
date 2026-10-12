@@ -168,6 +168,7 @@ Run `fsagent -h` for the full list. The useful ones:
 | `-no-open` | Don't open the browser automatically |
 | `-report` | Print a problem report (version, system, settings with the token removed, latest log lines) and exit |
 | `-autostart on\|off\|status` | Start the agent quietly when you sign in (or check whether it does). Also in the dashboard under Settings. |
+| `-doctor` (or `doctor`) | Check your setup (settings, folders, network, ports, firewall, discovery, log) and say what to fix. Exits with 1 if something needs fixing. Also in the dashboard under "Check my setup". |
 
 ## The dashboard
 
@@ -181,6 +182,10 @@ When the agent runs, it also serves a small dashboard for the person at the comp
 ## Logs and problem reports
 
 The agent keeps a log of what it does, with a timestamp for every line (`agent.log`, next to the settings file; it rotates at 2 MB and keeps 3 old files). The access token is never written to it. In the dashboard, **Activity & logs** shows it with filters and search, and **Report a problem** builds a report you can copy or download. Your token and your user name in paths are removed from it, and IP addresses are masked by default. From a terminal, `fsagent -report` prints the same report.
+
+### My phone can't connect
+
+Run `fsagent -doctor` (or open **Check my setup** in the dashboard). It tests your settings, folders, network address, ports, firewall (where it can) and automatic discovery, and tells you what to change. If everything passes, it lists the usual causes: a guest Wi-Fi, a VPN, or a firewall.
 
 ## Build Phases
 

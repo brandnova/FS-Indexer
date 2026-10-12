@@ -198,6 +198,7 @@ func (ui *WebUI) Handler() http.Handler {
 	mux.HandleFunc("GET /api/report", ui.api(ui.handleReport))
 	mux.HandleFunc("GET /api/autostart", ui.api(ui.handleAutostart))
 	mux.HandleFunc("POST /api/autostart", ui.api(ui.handleAutostartSave))
+	mux.HandleFunc("POST /api/doctor", ui.api(ui.handleDoctor))
 
 	mux.HandleFunc("POST /internal/launch", ui.handleInternalLaunch)
 	mux.HandleFunc("POST /internal/quit", ui.handleInternalQuit)

@@ -72,7 +72,7 @@
   };
 
   // ---------- state and API ----------
-  const PAGES = { home: 'Home', folders: 'Folders', pair: 'Connect a phone', rules: 'Privacy & filters', activity: 'Activity & logs', settings: 'Settings' };
+  const PAGES = { home: 'Home', folders: 'Folders', pair: 'Connect a phone', rules: 'Privacy & filters', activity: 'Activity & logs', doctor: 'Check my setup', settings: 'Settings' };
   const state = { status: null, folders: null, rules: null, logLines: [] };
   let currentPage = 'home';
   let stopped = false;
@@ -166,6 +166,7 @@
     if (name === 'rules') loadRules();
     if (name === 'activity') { renderFeed(); if (!$('#panel-log').hidden) loadLogs(); }
     if (name === 'settings') loadAutostart();
+    if (name === 'doctor' && !doctorText) runDoctor();
   }
 
   // ---------- status (all pages) ----------
@@ -575,6 +576,57 @@
     }
     await loadAutostart(); // shows what is really set now
   });
+
+  // ---------- check my setup ----------
+  const CHECK_ICONS = { ok: 'check', warn: 'alert', fail: 'x', info: 'help' };
+  let doctorText = '';
+
+  async function runDoctor() {
+    const btn = $('#doctor-run');
+    btn.disabled = true;
+    $('#doctor-summary').hidden = true;
+    $('#doctor-tips').hidden = true;
+    $('#doctor-results').replaceChildren(h('div', { class: 'card muted' }, 'Checking... this takes a few seconds.'));
+    try {
+      renderDoctor(await postJSON('/api/doctor'));
+    } catch (e) {
+      $('#doctor-results').replaceChildren();
+      if (e.message !== 'locked') toast(e.message, 'bad');
+    }
+    btn.disabled = false;
+  }
+
+  function renderDoctor(res) {
+    const checks = res.checks;
+    $('#doctor-results').replaceChildren(...checks.map((c) =>
+    h('article', { class: 'check-card' },
+      h('div', { class: 'check-icon ' + c.status }, icon(CHECK_ICONS[c.status] || 'help')),
+      h('div', { class: 'check-body' },
+        h('strong', null, c.title),
+        h('div', { class: 'check-detail' }, c.detail),
+        c.fix ? h('div', { class: 'check-fix' }, h('strong', null, 'How to fix: '), c.fix) : null))));
+
+    const kind = res.fail > 0 ? 'no' : res.warn > 0 ? 'maybe' : 'yes';
+    const text = res.fail > 0
+    ? res.fail + (res.fail === 1 ? ' problem to fix' : ' problems to fix')
+    : res.warn > 0
+    ? 'Mostly fine: ' + res.warn + (res.warn === 1 ? ' thing to look at' : ' things to look at')
+    : 'Everything checks out';
+    const summary = $('#doctor-summary');
+    summary.hidden = false;
+    summary.className = 'verdict ' + kind;
+    summary.replaceChildren(icon(kind === 'yes' ? 'check' : 'alert'), h('span', null, text));
+
+    const addr = state.status && state.status.address ? state.status.address : 'ADDRESS:PORT';
+    $('#doctor-ping-url').textContent = 'http://' + addr + '/api/v1/ping';
+    $('#doctor-tips').hidden = false;
+
+    doctorText = checks.map((c) => '[' + c.status.toUpperCase() + '] ' + c.title + ': ' + c.detail + (c.fix ? '\n    How to fix: ' + c.fix : '')).join('\n');
+    $('#doctor-copy').hidden = false;
+  }
+
+  $('#doctor-run').addEventListener('click', runDoctor);
+  $('#doctor-copy').addEventListener('click', () => copyText(doctorText, null, 'Results copied'));
 
   // ---------- start ----------
   window.addEventListener('hashchange', route);

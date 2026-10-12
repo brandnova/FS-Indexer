@@ -29,6 +29,7 @@ func main() {
 	rotate := flag.Bool("rotate-token", false, "create a new access token, show the pairing QR code, then exit")
 	report := flag.Bool("report", false, "print a problem report (the token is removed) and exit")
 	autostart := flag.String("autostart", "", "start the agent when you sign in: on, off or status")
+	doctor := flag.Bool("doctor", false, "check your setup and say what to fix, then exit")
 	quiet := flag.Bool("quiet", false, "print only warnings and errors (no banner, QR code or token)")
 	noQR := flag.Bool("no-qr", false, "don't draw the QR code; show the address and token only")
 	noColor := flag.Bool("no-color", false, "turn off colours (the NO_COLOR environment variable works too)")
@@ -39,6 +40,9 @@ func main() {
 	noOpen := flag.Bool("no-open", false, "don't open the browser automatically")
 	flag.BoolVar(&verbose, "verbose", false, "also record extra details in the log file, such as every path that couldn't be read")
 	flag.Parse()
+	if flag.Arg(0) == "doctor" {
+		*doctor = true // "fsagent doctor" works too
+	}
 
 	if *showVersion {
 		fmt.Printf("%s %s (%s %s/%s)\n", binaryName, version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
@@ -105,6 +109,12 @@ func main() {
 		con = newConsoleFor(io.Discard, false, true) // no terminal here: the log file tells the story
 	}
 	logs.Infof("agent", "%s %s starting (%s/%s, %s, process %d)", displayName, versionLabel(), runtime.GOOS, runtime.GOARCH, mode, os.Getpid())
+
+	if *doctor {
+		code := runDoctorCommand(talk, configPath, logPath)
+		logs.Close()
+		os.Exit(code)
+	}
 
 	// Maintenance commands: touch the settings, print, exit. No server.
 	if *autostart != "" {

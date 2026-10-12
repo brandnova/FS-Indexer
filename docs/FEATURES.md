@@ -106,17 +106,11 @@ Small features that fit the project's core job of finding your files from your p
 - [x] Ignore-rules editor with a "test a path" box (S)
 - [x] Start on login (Windows registry, macOS LaunchAgent, Linux autostart or systemd user unit) (M)
 - [x] Launchers per OS: Windows shortcut/installer, macOS .app, Linux .desktop entry and icon (M)
-- [ ] Troubleshooter: `fsagent doctor` and a web page (M)
-- [ ] System tray or menu-bar icon: Open dashboard, Show pairing code, Pause sharing, Quit (M; macOS needs cgo, GNOME needs an extension)
-- [ ] Scheduled rescans and a "pause sharing" switch (S)
-- [ ] Private-folder marker file (`.nosync`) (S) (new)
-- [ ] Disk-usage view (agent web UI and phone) (M) (new)
-- [ ] Explicit opt-in for whole-home or whole-drive indexing, with hard exclusions; reduce per-entry memory first (S)
-- [ ] gitignore-style `.ignore` file support (M)
+- [x] Troubleshooter: `fsagent doctor` and a web page (M)
 - [x] Dashboard redesign: sidebar app, getting-started checklist, dialogs, toasts, logo from `static/images/` (M) (new)
 - [x] Agent log file (timestamped, rotating) with a log viewer, "Report a problem" and `fsagent -report` (M) (new)
 - [x] Windows `.exe` icon and version info embedded (S) (new)
-- [ ] Icons for macOS and Linux through the `.app` bundle and `.desktop` file (part of the launchers item)
+- [x] Icons for macOS and Linux through the `.app` bundle and `.desktop` file (part of the launchers item)
 
 ### Milestone 5: Security hardening
 Must be finished before any feature that serves file contents.
@@ -174,6 +168,7 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - [ ] Faster syncing: delta sync, a file watcher on the agent, resumable transfers (only if real numbers show it's needed)
 - [ ] Smarter search: fuzzy matching and SQLite FTS5
 - [ ] Remote access through a hosted relay (long term; it would need a subscription to cover server costs, and it changes the "nothing leaves your network" promise)
+- [ ] Include the "Check my setup" results in the problem report (S)
 
 ## Changelog
 
@@ -192,3 +187,5 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - 2026-10-10: Milestone 4, slice 1: loopback dashboard with pairing QR, folders and activity; smart double-click and background mode (`-ui`, `-background`, `-stop`); single running agent; errors shown in the browser when there's no terminal.
 - 2026-10-11: Milestone 4, slice 2: Folders and Privacy pages with live settings reload, agent log file with viewer and problem reports, redesigned dashboard.
 - 2026-10-12: Milestone 4, slice 3: start on login on all three systems, macOS app and Linux packages, "Made by Brand Nova" credit in the agent and app.
+- 2026-10-12: Published v0.1.0-rc2 (pre-release) for Windows and macOS testing.
+- 2026-10-12: Milestone 4, slice 4: `fsagent -doctor` and the dashboard's "Check my setup" page. Milestone 4 complete.

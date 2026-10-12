@@ -31,6 +31,7 @@
     <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
     <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2zM12 10v5M12 18h.01"/></symbol>
     <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h9M19 7h1M4 12h3M13 12h7M4 17h11M21 17h-1"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="12" r="2.2"/><circle cx="18" cy="17" r="2.2"/></symbol>
+      <symbol id="i-doctor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></symbol>
   </svg>
 
   <div class="app">
@@ -52,6 +53,7 @@
         <a class="nav-item" href="#pair" data-page="pair"><svg class="icon" aria-hidden="true"><use href="#i-phone"></use></svg><span>Connect a phone</span></a>
         <a class="nav-item" href="#rules" data-page="rules"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg><span>Privacy &amp; filters</span></a>
         <a class="nav-item" href="#activity" data-page="activity"><svg class="icon" aria-hidden="true"><use href="#i-activity"></use></svg><span>Activity &amp; logs</span></a>
+        <a class="nav-item" href="#doctor" data-page="doctor"><svg class="icon" aria-hidden="true"><use href="#i-doctor"></use></svg><span>Check my setup</span></a>
         <a class="nav-item" href="#settings" data-page="settings"><svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg><span>Settings</span></a>
       </nav>
 
@@ -149,6 +151,7 @@
               <div class="chips" id="others-list"></div>
             </div>
             <p class="notice"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg><span>Anyone who scans this code can read your file list, so show it only to your own devices.</span></p>
+            <p class="muted small">Still can't connect? <a href="#doctor">Check my setup</a>.</p>
           </section>
         </section>
 
@@ -218,6 +221,35 @@
             <p class="muted small">Log file: <code id="log-path">-</code></p>
           </section>
         </section>
+
+        <!-- ============ Check my setup ============ -->
+        <section class="page" data-page="doctor" hidden>
+          <section class="card">
+            <div class="row-between">
+              <div>
+                <h2>Check my setup</h2>
+                <p class="muted small">Looks at your settings, folders, network and ports, and tells you what to fix if your phone can't connect. It changes nothing.</p>
+              </div>
+              <div class="btn-row">
+                <button class="btn ghost" id="doctor-copy" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#i-copy"></use></svg>Copy results</button>
+                <button class="btn primary" id="doctor-run" type="button"><svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>Run the checks</button>
+              </div>
+            </div>
+          </section>
+
+          <div class="verdict" id="doctor-summary" hidden></div>
+          <div class="stack" id="doctor-results"></div>
+
+          <section class="card" id="doctor-tips" hidden>
+            <h2>Phone still can't connect?</h2>
+            <ol class="tips">
+              <li>Make sure the phone and this computer are on the same Wi-Fi or network. A guest network often stops devices from seeing each other.</li>
+              <li>Turn off any VPN on the phone and on this computer, or add the VPN's range to <code>allowed_networks</code> in the settings file.</li>
+              <li>Open <code id="doctor-ping-url">-</code> in the phone's browser. If it shows <code>{"error":"unauthorized"}</code>, the network is fine and only the token is wrong: scan the QR code again. If it doesn't load, something between the phone and this computer is blocking it, usually a firewall or a router setting.</li>
+            </ol>
+          </section>
+        </section>
+
         <!-- ============ Settings ============ -->
         <section class="page" data-page="settings" hidden>
           <section class="card">
