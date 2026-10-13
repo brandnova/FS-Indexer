@@ -47,6 +47,8 @@ Through the dashboard you can also add and remove shared folders. For that it li
 
 Each phone has its own key. The PC keeps only a hash of it (in `devices.json`, readable only by you), so a copy of that file can't be used to read your file list. The QR code carries a one-time pairing code, not a permanent secret: a photo of the screen is useless after ten minutes or after one use. Ten wrong keys or codes in a minute lock that address out for a minute. Until the connection itself is encrypted, the code and the key cross your local network as plain HTTP: pair at home, not on a network you don't trust.
 
+File access is off until you turn it on, and then paired phones can read any file the agent lists. The agent re-checks every request: the path must be an exact entry of the current file list, the folder must be switched on, no rule may skip it, and after following links it must still be inside the shared folder and be a plain file. At most four files are sent at once. The connection is not encrypted yet (see "Trusted networks only" in the README), so a device on the same network could read a file while it is being sent. Turn file access on only at home, or with a direct hotspot link.
+
 ## In scope
 
 - Authentication or LAN-guard bypass

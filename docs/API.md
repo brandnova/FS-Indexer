@@ -128,3 +128,16 @@ The QR code carries `{"v":2,"host","port","code","id","name"}`. Agents before th
 ### Keys
 
 Every request except `/pair` needs `Authorization: Bearer <key>`. A key is either a phone's own key (from `/pair`) or, unless switched off in the dashboard (`disable_legacy_token`), the old shared token. The agent stores only a SHA-256 hash of each phone's key, in `devices.json`. Wrong keys and wrong codes count together toward the lockout (10 per minute per address).
+
+### `GET /api/v1/download?path=<file path>`
+
+Sends one file. `path` is the path as it appears in the file list (for example `Documents/cv/me.pdf`). Needs a key, like every request except `/pair`.
+
+- Supports `Range` requests (`206 Partial Content`) and `HEAD`.
+- `Content-Disposition: attachment` with the file name (RFC 5987), `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`.
+- `403 {"error":"downloads_off"}`: the person hasn't allowed file access on the PC (the default). The ping answer says `"file_access": true|false`.
+- `404 {"error":"not_found"}`: no such listed file. The same answer is given for files that exist but aren't shared (skipped by a rule, in a folder that is switched off, links, anything unusual), so the answer reveals nothing.
+- `403 {"error":"unreadable"}`: the agent isn't allowed to read it.
+- `503 {"error":"busy"}` + `Retry-After`: four files are already being sent.
+
+The ping answer has a new field, `file_access` (boolean). The API version is unchanged (1).

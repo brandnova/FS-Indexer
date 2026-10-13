@@ -174,6 +174,7 @@ var doctorChecks = []doctorCheck{
 	{"agent", checkAgent},
 	{"phones", checkPhones},
 	{"phone-port", checkPhonePort},
+	{"fileaccess", checkFileAccess},
 	{"dashboard", checkDashboardPort},
 	{"index", checkIndex},
 	{"discovery", checkDiscovery},
@@ -435,6 +436,19 @@ func checkPhones(e *doctorEnv) (Check, bool) {
 		parts = append(parts, "The old shared token is still accepted, for phones paired before per-phone keys existed. Turn it off under Connect a phone once every phone has paired again.")
 	}
 	c.Detail = strings.Join(parts, "\n")
+	return c, true
+}
+
+func checkFileAccess(e *doctorEnv) (Check, bool) {
+	if e.Config == nil {
+		return Check{}, false
+	}
+	c := Check{Title: "Opening files from the phone", Status: StatusInfo}
+	if e.Config.AllowFileAccess {
+		c.Detail = "On: paired phones can open and download any file the agent lists. Files travel without encryption, so use a network you trust."
+	} else {
+		c.Detail = "Off (the default): the phone only sees file names. Turn it on under Settings in the dashboard to open and download files."
+	}
 	return c, true
 }
 

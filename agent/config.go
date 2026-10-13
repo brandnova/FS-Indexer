@@ -39,6 +39,9 @@ type Config struct {
 	// DisableLegacyToken stops the old shared token from working. New installs start with it
 	// switched off; settings files from before per-phone keys keep it on until the person turns it off.
 	DisableLegacyToken bool `json:"disable_legacy_token"`
+	// AllowFileAccess lets paired phones open and download the files the agent lists, not only see
+	// their names. Off unless the person turns it on.
+	AllowFileAccess bool `json:"allow_file_access"`
 
 	allowedNets  []*net.IPNet // parsed AllowedNetworks; not saved
 	firstRun     bool         // this run created the settings file

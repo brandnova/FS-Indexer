@@ -221,6 +221,9 @@ func (ui *WebUI) Handler() http.Handler {
 	mux.HandleFunc("POST /internal/pair", ui.handleInternalPair)
 	mux.HandleFunc("POST /internal/status", ui.handleInternalStatus)
 
+	mux.HandleFunc("GET /api/fileaccess", ui.api(ui.handleFileAccess))
+	mux.HandleFunc("POST /api/fileaccess", ui.api(ui.handleFileAccessSave))
+
 	mux.HandleFunc("POST /internal/launch", ui.handleInternalLaunch)
 	mux.HandleFunc("POST /internal/quit", ui.handleInternalQuit)
 	return ui.guard(mux)

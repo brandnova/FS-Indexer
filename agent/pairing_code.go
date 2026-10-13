@@ -10,6 +10,9 @@ import (
 	"github.com/mdp/qrterminal/v3"
 )
 
+// trustNotice is shown wherever pairing is: the connection isn't encrypted (yet).
+const trustNotice = "Pair only on a network you trust, or link just your phone and this PC with a hotspot. The connection isn't encrypted."
+
 // pairingPayloadV2 is what the QR code carries now: where the PC is, and a one-time code.
 // The permanent token is never in it.
 type pairingPayloadV2 struct {
@@ -49,6 +52,7 @@ func PrintPairingCode(c *Console, cfg *Config, host string, codes *PairingCodes,
 	c.Blank()
 	c.Text(fmt.Sprintf(`Or choose "Enter details manually" and type:  address %s:%d   code %s`, host, cfg.Port, formatCode(code)))
 	c.Hint(fmt.Sprintf("The code works once and runs out in about %d minutes. Run  %s -pair  (or use the dashboard) for a new one.", minutes, binaryName))
+	c.Warn(trustNotice)
 	if others := otherLANIPs(host); len(others) > 0 {
 		c.Hint("Other addresses of this computer: " + strings.Join(others, ", "))
 	}
@@ -92,6 +96,7 @@ func runPairCommand(c *Console, runtimePath string, drawQR bool) int {
 		c.Text("The pairing code is " + out.Code + " (the agent couldn't work out this computer's address).")
 	}
 	c.Hint(fmt.Sprintf("The code works once and runs out in about %d minutes.", (out.ExpiresIn+59)/60))
+	c.Warn(trustNotice)
 	c.Blank()
 	return 0
 }

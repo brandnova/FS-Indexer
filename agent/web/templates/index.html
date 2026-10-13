@@ -73,6 +73,10 @@
       <main id="pages">
         <!-- ============ Home ============ -->
         <section class="page" data-page="home">
+          <div class="trust-banner compact" role="note">
+            <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+            <p><strong>Trusted networks only.</strong> The connection to your phone isn't encrypted. Use your home network, or link just the two with a hotspot. <a href="#pair">How</a></p>
+          </div>
           <div class="hero card ok" id="home-hero">
             <div class="hero-icon" id="home-icon"></div>
             <div class="hero-text">
@@ -119,6 +123,18 @@
 
         <!-- ============ Connect a phone ============ -->
         <section class="page" data-page="pair" hidden>
+          <div class="trust-banner" role="note">
+            <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+            <p><strong>Trusted networks only.</strong> The connection between your phone and this PC isn't encrypted. Pair at home, or link just the two of them directly.</p>
+          </div>
+          <details class="card how">
+            <summary>Link just your phone and this PC (the most private way)</summary>
+            <ol class="tips">
+              <li>Turn on your phone's hotspot, and connect this computer to it in your Wi-Fi settings. (Or turn on this computer's hotspot and join it from the phone.)</li>
+              <li>Come back to this page and reload it: the address shown here changes to the hotspot's.</li>
+              <li>Scan the QR code. Nobody else is on that little network.</li>
+            </ol>
+          </details>
           <section class="card">
             <div class="pair-grid">
               <div class="qr-box"><img id="qr" alt="QR code for pairing" hidden></div>
@@ -264,6 +280,15 @@
 
         <!-- ============ Settings ============ -->
         <section class="page" data-page="settings" hidden>
+          <section class="card">
+            <div class="row-between">
+              <div>
+                <h2>Let my phone open and download files</h2>
+                <p class="muted small">Off by default, so your phone can only see file names. When it's on, a paired phone can open, preview and save any file the agent lists. Files travel without encryption: use it only on a network you trust.</p>
+              </div>
+              <label class="switch"><input type="checkbox" id="fileaccess-switch" aria-label="Let my phone open and download files"><span class="track"></span></label>
+            </div>
+          </section>
           <section class="card">
             <div class="row-between">
               <div>

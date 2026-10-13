@@ -8,6 +8,7 @@ import { normalizeCode, pairWith, parseAddress, parseQrPayload } from '../pairin
 import { platform } from '../platform';
 import type { PairingInfo, PairingOffer } from '../types';
 import { Button, Card, Text, fonts, radius, useTheme, useThemedStyles, type Palette } from '../ui';
+import TrustNotice from '../components/TrustNotice';
 
 interface Props {
   onPaired: (info: PairingInfo) => void;
@@ -105,6 +106,8 @@ export default function PairScreen({ onPaired, onDemo }: Props) {
           Start the agent on your computer. It shows a QR code: scan it here and your files are one tap away.
         </Text>
       </View>
+
+      <TrustNotice />
 
       <Button
         title="Scan QR code"

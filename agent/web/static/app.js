@@ -165,7 +165,7 @@
     if (name === 'pair') loadPairing();
     if (name === 'rules') loadRules();
     if (name === 'activity') { renderFeed(); if (!$('#panel-log').hidden) loadLogs(); }
-    if (name === 'settings') loadAutostart();
+    if (name === 'settings') { loadAutostart(); loadFileAccess(); }
     if (name === 'doctor' && !doctorText) runDoctor();
   }
 
@@ -707,6 +707,34 @@
 
   $('#doctor-run').addEventListener('click', runDoctor);
   $('#doctor-copy').addEventListener('click', () => copyText(doctorText, null, 'Results copied'));
+
+  // ---------- opening files from the phone ----------
+  async function loadFileAccess() {
+    try {
+      const a = await api('/api/fileaccess');
+      $('#fileaccess-switch').checked = a.enabled;
+    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
+  }
+
+  $('#fileaccess-switch').addEventListener('change', async (e) => {
+    const box = e.target;
+    const wanted = box.checked;
+    if (wanted) {
+      const yes = await confirmDialog({
+        title: 'Let paired phones open and download files?',
+        text: 'A paired phone will be able to read any file the agent lists, not just its name. Files travel over your network without encryption: do this only on a network you trust, or with a direct hotspot link between your phone and this PC.',
+        ok: 'Turn it on',
+      });
+      if (!yes) { box.checked = false; return; }
+    }
+    box.disabled = true;
+    try {
+      await postJSON('/api/fileaccess', { enabled: wanted });
+      toast(wanted ? 'Phones can now open files' : 'Phones can only see file names');
+    } catch (err) { if (err.message !== 'locked') toast(err.message, 'bad'); }
+    box.disabled = false;
+    await loadFileAccess();
+  });
 
   // ---------- start ----------
   window.addEventListener('hashchange', route);

@@ -116,10 +116,10 @@ Small features that fit the project's core job of finding your files from your p
 Must be finished before any feature that serves file contents.
 - [x] Per-device tokens via a one-time pairing code, `devices.json` on the agent, revoke a single phone (M)
 - [x] Short-lived pairing codes so the QR stops being a permanent secret (S)
-- [ ] TLS with a self-signed cert; certificate fingerprint carried in the QR and pinned by the phone (M to L)
 
 ### Milestone 6: Files
-- [ ] `GET /api/v1/download` with path-traversal hardening and range requests (M)
+- [x] `GET /api/v1/download` with path-traversal hardening and range requests (M)
+- [x] "Trusted networks only" banners (S)
 - [ ] Open, preview and share files from the phone (M)
 - [ ] Upload from phone into a single configured drop folder on the PC (M, needs Milestone 5)
 
@@ -169,6 +169,7 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - [ ] Smarter search: fuzzy matching and SQLite FTS5
 - [ ] Remote access through a hosted relay (long term; it would need a subscription to cover server costs, and it changes the "nothing leaves your network" promise)
 - [ ] Include the "Check my setup" results in the problem report (S)
+- [ ] Encrypt the phone-to-PC connection (a key exchange from the pairing code, then authenticated encryption of requests and the file list) (L)
 
 ## Changelog
 
@@ -190,3 +191,4 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - 2026-10-12: Published v0.1.0-rc2 (pre-release) for Windows and macOS testing.
 - 2026-10-12: Milestone 4, slice 4: `fsagent -doctor` and the dashboard's "Check my setup" page. Milestone 4 complete.
 - 2026-10-12: Milestone 5, slice 1: per-phone keys, one-time pairing codes, paired-phones list.
+- 2026-10-13: Milestone 6, slice 1: the agent can send files (off by default), trusted-network banners.

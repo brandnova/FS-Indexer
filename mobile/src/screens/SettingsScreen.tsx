@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useAgentInfo } from '../components/AgentInfo';
 import BrandFooter from '../components/BrandFooter';
+import TrustNotice from '../components/TrustNotice';
 import { formatRelative } from '../format';
 import { unpair } from '../pairing';
 import { platform } from '../platform';
@@ -70,6 +71,8 @@ export default function SettingsScreen({ onUnpaired }: { onUnpaired: () => void 
           </Card>
         </Section>
       )}
+
+      <TrustNotice compact />
 
       <Section title="Updates">
         <Card style={styles.cardGap}>

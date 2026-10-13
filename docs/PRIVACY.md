@@ -22,6 +22,7 @@ FS Indexer does not collect your data. There are no accounts, no analytics, no a
 - It keeps a log (`agent.log`, next to its settings file) of what it does, such as scans, folder changes, and when a phone on your network updated its file list or used a wrong token. The log stays on your computer and never contains the access token. A problem report is only created when you ask for it, and nothing is sent anywhere automatically.
 - If you turn on "start on login", the agent adds one entry to your account so it can start by itself: a value under the Run key in the Windows registry, a login item file in `~/Library/LaunchAgents` on macOS, or a file in `~/.config/autostart` on Linux. Turning the setting off removes that entry. Nothing is installed for other users of the computer.
 - The agent keeps a list of the phones you paired (`devices.json`): the name each phone gave itself, when it was paired and last seen, and its address on your network, plus a hash of its key. Remove a phone in the dashboard and its entry is deleted.
+- With "Let my phone open and download files" switched on, the contents of the files you open on your phone are sent from your PC to that phone over your network. Nothing goes anywhere else, and the agent logs which file was opened and by which phone (in the log on your PC).
 
 **On your phone (the app):**
 
