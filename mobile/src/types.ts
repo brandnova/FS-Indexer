@@ -43,4 +43,6 @@ export interface PingResponse {
   file_count: number;
   scanning: boolean;
   file_access?: boolean; // whether the PC lets phones open files (absent on older agents)
+  uploads?: boolean; // whether the PC accepts files from this phone (absent on older agents)
+  upload_max_mb?: number; // the largest file the PC accepts
 }

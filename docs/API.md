@@ -141,3 +141,15 @@ Sends one file. `path` is the path as it appears in the file list (for example `
 - `503 {"error":"busy"}` + `Retry-After`: four files are already being sent.
 
 The ping answer has a new field, `file_access` (boolean). The API version is unchanged (1).
+
+### `POST /api/v1/upload`
+
+Sends one file into the drop folder on the PC. The request body is the file itself (raw bytes); `X-File-Name` carries its name, percent-encoded. Only a phone paired with a code may use it (not the old shared token).
+
+Answers:
+- `201 {"name": "<saved as>", "size": <bytes>}`. A name that is taken becomes `name (1).ext`; nothing is ever overwritten.
+- `403 uploads_off`: the person hasn't switched it on (the default). `403 pair_again`: this phone uses the old shared token.
+- `413 too_large`: over the PC's limit (the ping answer has `upload_max_mb`). `415 program_file`: `.exe`, `.sh` and similar are refused unless the person allowed them.
+- `429 upload_limit` + `Retry-After`: the hourly limit for all phones together. `503 busy` (two at once) or `503 drop_folder_unavailable`. `507 disk_full`.
+
+The ping answer has two new fields, `uploads` (boolean) and `upload_max_mb`. The API version is unchanged (1).

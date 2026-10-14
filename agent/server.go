@@ -54,6 +54,7 @@ func NewServerWith(cfg *Config, ix *Indexer, deps ServerDeps) *http.Server {
 	api.HandleFunc("GET /api/v1/roots", rootsHandler(ix))
 	api.HandleFunc("POST /api/v1/reindex", reindexHandler(ix))
 	api.HandleFunc("GET /api/v1/download", downloadHandler(ix))
+	api.HandleFunc("POST /api/v1/upload", uploadHandler(ix))
 
 	// 10 failed attempts within a minute locks that address out for a minute.
 	// Wrong keys and wrong pairing codes count together.
@@ -91,6 +92,8 @@ func pingHandler(cfg *Config, ix *Indexer) http.HandlerFunc {
 			"file_count":  len(entries),
 			"scanning":    ix.Scanning(),
 			"file_access": ix.Config().AllowFileAccess,
+			"uploads":       ix.Config().uploadsEnabled(),
+			"upload_max_mb": ix.Config().uploadMaxMB(),
 		})
 	}
 }

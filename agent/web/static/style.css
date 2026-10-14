@@ -305,3 +305,9 @@ body.center .card { text-align: center; }
 .trust-banner.compact p { font-size: 0.85rem; }
 details.how > summary { cursor: pointer; font-weight: 800; }
 details.how[open] > summary { margin-bottom: 8px; }
+
+/* ---------- receiving files ---------- */
+.small-input { width: 110px; }
+.upload-form { margin-top: 14px; align-items: start; }
+.upload-form dd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.upload-form dd .alert { flex-basis: 100%; margin: 0; }

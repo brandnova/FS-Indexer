@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { copyText } from './clipboard';
 import DetailsSheet from './components/DetailsSheet';
 import FilterSheet from './components/FilterSheet';
+import UploadSheet from './components/UploadSheet';
 import { isPinned, setPinned, type FileRow, type FilterSpec } from './db/queries';
 import { DEFAULT_FILTERS, toSpec, type FilterState } from './filters';
 import { useToast } from './hooks';
@@ -17,6 +18,7 @@ interface Actions {
   spec: FilterSpec;
   setFilters: (filters: FilterState) => void;
   openFilters: () => void;
+  openUpload: () => void;
 }
 
 const ActionsContext = createContext<Actions | null>(null);
@@ -31,6 +33,7 @@ export function ActionsProvider({ bump, children }: { bump: () => void; children
   const [toast, notify] = useToast();
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [details, setDetails] = useState<{ row: FileRow; pcPath: string | null } | null>(null);
   const spec = useMemo(() => toSpec(filters), [filters]);
 
@@ -86,6 +89,7 @@ export function ActionsProvider({ bump, children }: { bump: () => void; children
       spec,
       setFilters,
       openFilters: () => setFiltersOpen(true),
+      openUpload: () => setUploadOpen(true),
     }),
     [showDetails, togglePin, copyFolderPath, notify, filters, spec],
   );
@@ -95,6 +99,7 @@ export function ActionsProvider({ bump, children }: { bump: () => void; children
       {children}
       <Toast message={toast} />
       <FilterSheet visible={filtersOpen} value={filters} onChange={setFilters} onClose={() => setFiltersOpen(false)} />
+      <UploadSheet visible={uploadOpen} onClose={() => setUploadOpen(false)} />
       <DetailsSheet
         row={details?.row ?? null}
         pcPath={details?.pcPath ?? null}

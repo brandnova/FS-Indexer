@@ -175,6 +175,7 @@ var doctorChecks = []doctorCheck{
 	{"phones", checkPhones},
 	{"phone-port", checkPhonePort},
 	{"fileaccess", checkFileAccess},
+	{"uploads", checkUploads},
 	{"dashboard", checkDashboardPort},
 	{"index", checkIndex},
 	{"discovery", checkDiscovery},
@@ -448,6 +449,33 @@ func checkFileAccess(e *doctorEnv) (Check, bool) {
 		c.Detail = "On: paired phones can open and download any file the agent lists. Files travel without encryption, so use a network you trust."
 	} else {
 		c.Detail = "Off (the default): the phone only sees file names. Turn it on under Settings in the dashboard to open and download files."
+	}
+	return c, true
+}
+
+func checkUploads(e *doctorEnv) (Check, bool) {
+	cfg := e.Config
+	if cfg == nil {
+		return Check{}, false
+	}
+	c := Check{Title: "Receiving files from the phone", Status: StatusInfo}
+
+	switch {
+	case !cfg.AllowUploads:
+		c.Detail = "Off (the default). Turn it on under Settings in the dashboard to let paired phones send files into a drop folder."
+	case cfg.UploadDir == "":
+		c.Status = StatusWarn
+		c.Detail = "It is switched on, but no drop folder is chosen."
+		c.Fix = "Choose one under Settings in the dashboard."
+	default:
+		if st, err := os.Stat(cfg.UploadDir); err != nil || !st.IsDir() {
+			c.Status = StatusFail
+			c.Detail = fmt.Sprintf("The drop folder %s can't be found, so uploads from your phone fail.", cfg.UploadDir)
+			c.Fix = "Plug the drive back in, or choose another drop folder under Settings in the dashboard."
+		} else {
+			c.Status = StatusOK
+			c.Detail = fmt.Sprintf("On: files go to %s (up to %d MB each, %d per hour). They travel without encryption: use a network you trust.", cfg.UploadDir, cfg.uploadMaxMB(), cfg.uploadPerHour())
+		}
 	}
 	return c, true
 }

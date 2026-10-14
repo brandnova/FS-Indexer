@@ -165,7 +165,7 @@
     if (name === 'pair') loadPairing();
     if (name === 'rules') loadRules();
     if (name === 'activity') { renderFeed(); if (!$('#panel-log').hidden) loadLogs(); }
-    if (name === 'settings') { loadAutostart(); loadFileAccess(); }
+    if (name === 'settings') { loadAutostart(); loadFileAccess(); loadUploads(); }
     if (name === 'doctor' && !doctorText) runDoctor();
   }
 
@@ -349,7 +349,14 @@
     return path.split(/[\\/]/).filter(Boolean).pop() || '';
   }
 
-  async function openPicker(start) {
+  let pickerOnPick = null; // when set, the picker chooses a folder for something else (the drop folder)
+
+  async function openPicker(start, opts) {
+    pickerOnPick = opts && opts.onPick ? opts.onPick : null;
+    const choosing = Boolean(pickerOnPick);
+    $('#picker-title').textContent = choosing ? 'Choose the drop folder' : 'Choose a folder to share';
+    $('#picker-confirm').textContent = choosing ? 'Use this folder' : 'Share this folder';
+    $('#picker-label-field').hidden = choosing;
     $('#picker-label').value = '';
     showPickerError('');
     $('#picker').showModal();
@@ -385,7 +392,25 @@
   $('#picker-up').addEventListener('click', () => loadPicker(picker.parent));
   $('#picker-home').addEventListener('click', () => loadPicker(''));
   $('#picker-hidden').addEventListener('change', (e) => { picker.hidden = e.target.checked; loadPicker(picker.path); });
-  $('#picker-confirm').addEventListener('click', () => addFolder(picker.path, $('#picker-label').value.trim()));
+  $('#picker-confirm').addEventListener('click', () => {
+    if (pickerOnPick) {
+      const pick = pickerOnPick;
+      $('#picker').close();
+      pick(picker.path);
+      return;
+    }
+    addFolder(picker.path, $('#picker-label').value.trim());
+  });
+
+  $('#picker-mkdir').addEventListener('click', async () => {
+    if (!picker.path) { showPickerError('Open a folder first.'); return; }
+    const name = window.prompt('Name of the new folder');
+    if (!name) return;
+    try {
+      const res = await postJSON('/api/fs/mkdir', { parent: picker.path, name });
+      await loadPicker(res.path);
+    } catch (e) { if (e.message !== 'locked') showPickerError(e.message); }
+  });
 
   // ---------- connect a phone ----------
   let lastQrKey = null;
@@ -734,6 +759,60 @@
     } catch (err) { if (err.message !== 'locked') toast(err.message, 'bad'); }
     box.disabled = false;
     await loadFileAccess();
+  });
+
+  // ---------- receiving files from the phone ----------
+  let uploadState = null;
+  let uploadDir = '';
+
+  async function loadUploads() {
+    try {
+      uploadState = await api('/api/uploads');
+      uploadDir = uploadState.dir;
+      renderUploads();
+    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
+  }
+
+  function renderUploadDir() {
+    $('#upload-dir').textContent = uploadDir || 'No folder chosen yet';
+    $('#upload-dir-warn').hidden = !(uploadDir && uploadDir === uploadState.dir && !uploadState.dir_ok);
+  }
+
+  function renderUploads() {
+    const u = uploadState;
+    $('#upload-switch').checked = u.enabled;
+    $('#upload-max').value = u.max_mb;
+    $('#upload-hour').value = u.per_hour;
+    $('#upload-programs').checked = u.allow_programs;
+    $('#upload-used').textContent = u.used_this_hour + ' received in the last hour';
+    renderUploadDir();
+  }
+
+  $('#upload-choose').addEventListener('click', () =>
+    openPicker(uploadDir || '', { onPick: (path) => { uploadDir = path; renderUploadDir(); } }));
+
+  $('#upload-save').addEventListener('click', async () => {
+    const wanted = $('#upload-switch').checked;
+    if (wanted && !uploadState.enabled) {
+      const yes = await confirmDialog({
+        title: 'Let paired phones send files to this PC?',
+        text: 'A paired phone will be able to put files into the drop folder (never overwriting anything). Files travel over your network without encryption: do this only on a network you trust, or with a direct hotspot link between your phone and this PC.',
+        ok: 'Turn it on',
+      });
+      if (!yes) { $('#upload-switch').checked = false; return; }
+    }
+    try {
+      uploadState = await postJSON('/api/uploads', {
+        enabled: wanted,
+        dir: uploadDir,
+        max_mb: Number($('#upload-max').value),
+        per_hour: Number($('#upload-hour').value),
+        allow_programs: $('#upload-programs').checked,
+      });
+      uploadDir = uploadState.dir;
+      renderUploads();
+      toast('Saved');
+    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
   });
 
   // ---------- start ----------

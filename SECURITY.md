@@ -49,6 +49,8 @@ Each phone has its own key. The PC keeps only a hash of it (in `devices.json`, r
 
 File access is off until you turn it on, and then paired phones can read any file the agent lists. The agent re-checks every request: the path must be an exact entry of the current file list, the folder must be switched on, no rule may skip it, and after following links it must still be inside the shared folder and be a plain file. At most four files are sent at once. The connection is not encrypted yet (see "Trusted networks only" in the README), so a device on the same network could read a file while it is being sent. Turn file access on only at home, or with a direct hotspot link.
 
+Receiving files is off until you turn it on. Only phones paired with a code can send files (not the old shared token). Files go only into the drop folder you chose, which can't be a whole drive, your home folder, or the agent's settings folder. The name is reduced to a plain file name (no folders, nothing Windows forbids), nothing is ever overwritten, a file appears only once it has fully arrived, program files are refused unless you allow them, and you set a size limit and a limit on files per hour. At most two uploads run at once, and a stalled upload times out. The connection isn't encrypted yet: use it on a trusted network.
+
 ## In scope
 
 - Authentication or LAN-guard bypass

@@ -43,6 +43,13 @@ type Config struct {
 	// their names. Off unless the person turns it on.
 	AllowFileAccess bool `json:"allow_file_access"`
 
+	// Receiving files from paired phones into one drop folder, within limits. Off unless switched on.
+	AllowUploads        bool   `json:"allow_uploads"`
+	UploadDir           string `json:"upload_dir"`
+	UploadMaxMB         int    `json:"upload_max_mb"`         // 0 means the default (100)
+	UploadPerHour       int    `json:"upload_per_hour"`       // 0 means the default (30)
+	UploadAllowPrograms bool   `json:"upload_allow_programs"` // .exe, .sh and similar
+
 	allowedNets  []*net.IPNet // parsed AllowedNetworks; not saved
 	firstRun     bool         // this run created the settings file
 	defaultRoots bool         // "roots" was empty, so the standard folders are used

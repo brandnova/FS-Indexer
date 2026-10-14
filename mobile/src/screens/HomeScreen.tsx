@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useActions } from '../actions';
 import { FileListRow, subtitleFor } from '../components/FileRow';
+import SendToPcCard from '../components/SendToPcCard';
 import { listRecent, type FileRow } from '../db/queries';
 import { formatRelative, formatSize } from '../format';
 import { unpair } from '../pairing';
@@ -185,6 +186,8 @@ export default function HomeScreen({ onSearch, onOpenFolder, onSeeAllRecent, onE
           )}
         </Card>
       </FadeIn>
+
+      <SendToPcCard />
 
       {offline && helpOpen ? (
         <Card style={styles.helpCard}>

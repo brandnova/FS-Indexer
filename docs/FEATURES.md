@@ -121,7 +121,7 @@ Must be finished before any feature that serves file contents.
 - [x] `GET /api/v1/download` with path-traversal hardening and range requests (M)
 - [x] "Trusted networks only" banners (S)
 - [x] Open, preview and share files from the phone (M)
-- [ ] Upload from phone into a single configured drop folder on the PC (M, needs Milestone 5)
+- [x] Upload from phone into a single configured drop folder on the PC (M, needs Milestone 5)
 
 ## Milestone 7: Brand and monetization
 
@@ -171,6 +171,8 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - [ ] Include the "Check my setup" results in the problem report (S)
 - [ ] Encrypt the phone-to-PC connection (a key exchange from the pairing code, then authenticated encryption of requests and the file list) (L)
 - [ ] Save a file straight into a chosen folder on the phone (Android: the folder picker, with large-file safe streaming) (M)
+- [ ] Share files to the app from other apps ("Send to PC" in the Android share sheet) (M)
+- [ ] Receive whole folders, and a "received files" list in the dashboard (S)
 
 ## Changelog
 
@@ -194,3 +196,4 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - 2026-10-12: Milestone 5, slice 1: per-phone keys, one-time pairing codes, paired-phones list.
 - 2026-10-13: Milestone 6, slice 1: the agent can send files (off by default), trusted-network banners.
 - 2026-10-13: Milestone 6, slice 2: open, preview and share files in the app.
+- 2026-10-13: Milestone 6, slice 3: upload from the phone into a drop folder. Milestone 6 complete.

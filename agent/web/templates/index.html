@@ -292,6 +292,30 @@
           <section class="card">
             <div class="row-between">
               <div>
+                <h2>Receive files from my phone</h2>
+                <p class="muted small">Off by default. When it's on, a paired phone can send files into one drop folder on this computer. Nothing is ever overwritten, and the phone can't put files anywhere else. Files travel without encryption: use a network you trust.</p>
+              </div>
+              <label class="switch"><input type="checkbox" id="upload-switch" aria-label="Receive files from my phone"><span class="track"></span></label>
+            </div>
+            <dl class="kv upload-form">
+              <dt>Drop folder</dt>
+              <dd>
+                <code id="upload-dir">-</code>
+                <button class="link" id="upload-choose" type="button">Choose...</button>
+                <p class="alert" id="upload-dir-warn" hidden>This folder can't be found right now. Is a drive unplugged?</p>
+              </dd>
+              <dt>Largest file</dt>
+              <dd><input class="input small-input" id="upload-max" type="number" min="1" max="4096" inputmode="numeric" aria-label="Largest file in megabytes"> <span class="muted">MB</span></dd>
+              <dt>Files per hour</dt>
+              <dd><input class="input small-input" id="upload-hour" type="number" min="1" max="1000" inputmode="numeric" aria-label="Files per hour"> <span class="muted small" id="upload-used"></span></dd>
+              <dt>Program files</dt>
+              <dd><label class="check"><input type="checkbox" id="upload-programs"> Also accept program files (.exe, .bat, .sh ...)</label></dd>
+            </dl>
+            <div class="btn-row"><button class="btn primary" id="upload-save" type="button">Save</button></div>
+          </section>
+          <section class="card">
+            <div class="row-between">
+              <div>
                 <h2>Start when I sign in</h2>
                 <p class="muted small">The agent starts quietly in the background each time you sign in to this computer, so your phone can always update. It never opens a window by itself.</p>
               </div>
@@ -321,13 +345,14 @@
       <div class="picker-bar">
         <button class="btn ghost" id="picker-up" type="button"><svg class="icon" aria-hidden="true"><use href="#i-up"></use></svg>Up</button>
         <button class="btn ghost" id="picker-home" type="button"><svg class="icon" aria-hidden="true"><use href="#i-home"></use></svg>Home</button>
+        <button class="btn ghost" id="picker-mkdir" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>New folder</button>
         <code class="picker-path" id="picker-current">-</code>
       </div>
       <div class="picker-list" id="picker-list" role="list"></div>
       <p class="alert" id="picker-error" hidden></p>
       <label class="check"><input type="checkbox" id="picker-hidden"> Show hidden folders</label>
       <div class="picker-foot">
-        <label class="field"><span class="small muted">Name on your phone</span><input class="input" id="picker-label" type="text" maxlength="40" autocomplete="off"></label>
+        <label class="field" id="picker-label-field"><span class="small muted">Name on your phone</span><input class="input" id="picker-label" type="text" maxlength="40" autocomplete="off"></label>
         <div class="dialog-actions">
           <button class="btn ghost" data-close type="button">Cancel</button>
           <button class="btn primary" id="picker-confirm" type="button">Share this folder</button>

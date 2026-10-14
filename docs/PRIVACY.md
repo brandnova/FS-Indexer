@@ -23,6 +23,7 @@ FS Indexer does not collect your data. There are no accounts, no analytics, no a
 - If you turn on "start on login", the agent adds one entry to your account so it can start by itself: a value under the Run key in the Windows registry, a login item file in `~/Library/LaunchAgents` on macOS, or a file in `~/.config/autostart` on Linux. Turning the setting off removes that entry. Nothing is installed for other users of the computer.
 - The agent keeps a list of the phones you paired (`devices.json`): the name each phone gave itself, when it was paired and last seen, and its address on your network, plus a hash of its key. Remove a phone in the dashboard and its entry is deleted.
 - With "Let my phone open and download files" switched on, the contents of the files you open on your phone are sent from your PC to that phone over your network. Nothing goes anywhere else, and the agent logs which file was opened and by which phone (in the log on your PC).
+- With "Receive files from my phone" switched on, files you choose on your phone are sent to your PC and saved in the drop folder you picked. The app's temporary copy of each chosen file is deleted when its upload ends. The agent logs the name of each file received and which phone sent it.
 
 **On your phone (the app):**
 

@@ -70,6 +70,10 @@ By default your phone only sees file names. To open, preview and save files, tur
 
 In the app, tap a file and choose **Open** (it is copied to your phone and opened with the app you'd normally use for it) or **Share** (the share sheet, which also lets you save it to Files or Drive). Images and text files show a preview. Copies are kept only in the app's temporary storage: they are deleted after a day, and when you forget the PC.
 
+### Sending files from your phone to your PC
+
+Turn on **Receive files from my phone** under Settings in the dashboard, choose a drop folder (the picker has a **New folder** button), and set the largest file and how many files per hour you accept. In the app, tap **Send files to your PC** on the Home screen and choose files. They arrive in the drop folder; an existing file is never overwritten, and program files (.exe, .sh ...) are refused unless you allow them. Files travel without encryption, so use this only on a trusted network or a direct hotspot link.
+
 ## Design Decisions
 
 - **Flat NDJSON, not a nested tree.** Memory stays flat on both ends at 200k+ files; the phone derives the tree from `parent`.
