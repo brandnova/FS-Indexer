@@ -25,6 +25,7 @@ export interface UploadState {
   error: string | null;
   choose: () => void;
   cancel: () => void;
+  folder: string | null;
 }
 
 /** Whether the PC takes files, and the queue of files being sent. Closing the sheet cancels the sending. */
@@ -35,6 +36,7 @@ export function useUpload(visible: boolean): UploadState {
   const [items, setItems] = useState<UploadItem[]>([]);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [folder, setFolder] = useState<string | null>(null);
 
   const pairing = useRef<PairingInfo | null>(null);
   const current = useRef<Upload | null>(null);
@@ -49,6 +51,7 @@ export function useUpload(visible: boolean): UploadState {
     setAccess('checking');
     setNotice(null);
     setMaxMb(null);
+    setFolder(null);
     stopRequested.current = false;
     let stale = false;
 
@@ -77,6 +80,7 @@ export function useUpload(visible: boolean): UploadState {
           setNotice('Receiving files is switched off on your PC. To turn it on, open the agent\'s dashboard, go to Settings, and switch on "Receive files from my phone".');
         } else {
           setMaxMb(info.upload_max_mb ?? null);
+          setFolder(info.upload_folder ?? null);
           setAccess('ready');
         }
       } catch (e) {
@@ -162,6 +166,7 @@ export function useUpload(visible: boolean): UploadState {
     access,
     notice,
     maxMb,
+    folder,
     items,
     running,
     error,

@@ -60,7 +60,8 @@
           "cameraPermission": "Allow $(PRODUCT_NAME) to scan the pairing QR code shown by your PC."
         }
       ],
-      "expo-font"
+      "expo-font",
+      ["expo-file-system", { "supportsOpeningDocumentsInPlace": true, "enableFileSharing": true }]
     ],
     "extra": {
       "eas": {

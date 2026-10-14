@@ -94,6 +94,7 @@ func pingHandler(cfg *Config, ix *Indexer) http.HandlerFunc {
 			"file_access": ix.Config().AllowFileAccess,
 			"uploads":       ix.Config().uploadsEnabled(),
 			"upload_max_mb": ix.Config().uploadMaxMB(),
+			"upload_folder": uploadFolderName(ix.Config()),
 		})
 	}
 }

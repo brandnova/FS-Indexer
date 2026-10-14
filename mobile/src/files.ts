@@ -12,7 +12,7 @@ const MISSING = "This build of the app can't open files yet. Install the newest 
 
 // The native parts are loaded when they are first needed, so the rest of the app
 // still runs in a build that doesn't have them (like the clipboard does).
-function fileSystem(): FileSystemModule {
+export function fileSystem(): FileSystemModule {
   try {
     return require('expo-file-system/legacy') as FileSystemModule;
   } catch {
@@ -135,6 +135,14 @@ function safeName(name: string): string {
   return cleaned.slice(0, 80 - ext.length) + ext;
 }
 
+/** A short, stable code for a path, so each file gets its own temporary folder. */
+function shortHash(text: string): string {
+  let h = 5381;
+  for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(16);
+}
+
+// Every temporary copy lives in its own folder ("opened/<hash>-<mtime>/<name>"), so it keeps its real name.
 async function removeOldFiles(FS: FileSystemModule, dir: string): Promise<void> {
   try {
     const cutoff = Date.now() / 1000 - 24 * 3600;
@@ -150,7 +158,7 @@ async function removeOldFiles(FS: FileSystemModule, dir: string): Promise<void> 
 }
 
 export interface FileDownload {
-  promise: Promise<string>; // the local file's address
+  promise: Promise<string>; // the temporary copy's address
   cancel: () => void;
   cancelled: () => boolean;
 }
@@ -163,11 +171,13 @@ export function downloadToCache(c: Candidate, row: FileRow, onProgress: (fractio
   const promise = (async (): Promise<string> => {
     const FS = fileSystem();
     if (!FS.cacheDirectory) throw new ApiError('incompatible', MISSING);
-    const dir = `${FS.cacheDirectory}opened/`;
-    await FS.makeDirectoryAsync(dir, { intermediates: true }).catch(() => undefined);
-    await removeOldFiles(FS, dir);
+    const root = `${FS.cacheDirectory}opened/`;
+    await FS.makeDirectoryAsync(root, { intermediates: true }).catch(() => undefined);
+    await removeOldFiles(FS, root);
 
-    const target = `${dir}${row.mtime}-${safeName(row.name)}`;
+    const folder = `${root}${shortHash(row.path)}-${row.mtime}/`;
+    await FS.makeDirectoryAsync(folder, { intermediates: true }).catch(() => undefined);
+    const target = `${folder}${safeName(row.name)}`;
     const existing = await FS.getInfoAsync(target);
     if (existing.exists && existing.size === row.size) {
       onProgress(1);

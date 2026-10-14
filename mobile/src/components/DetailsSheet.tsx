@@ -1,4 +1,4 @@
-import { Copy, ExternalLink, Share2 } from 'lucide-react-native';
+import { Copy, Download, ExternalLink, FolderOpen, Share2 } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import { Image, Platform, View } from 'react-native';
 import type { FileRow } from '../db/queries';
@@ -19,7 +19,7 @@ export default function DetailsSheet({ row, pcPath, onCopy, onClose }: Props) {
   const [failedImage, setFailedImage] = useState<string | null>(null);
 
   const isFile = row !== null && !row.isDir;
-  const canOpen = isFile && files.access === 'ready';
+  const canUse = isFile && files.access === 'ready';
   const working = files.busy !== null;
 
   return (
@@ -30,11 +30,19 @@ export default function DetailsSheet({ row, pcPath, onCopy, onClose }: Props) {
       footer={
         row ? (
           <>
-            {canOpen ? (
+            {canUse ? (
               <>
+                <Button
+                  title={files.busy === 'download' ? 'Saving...' : 'Download'}
+                  icon={Download}
+                  loading={files.busy === 'download'}
+                  disabled={working && files.busy !== 'download'}
+                  onPress={files.download}
+                />
                 <Button
                   title={files.busy === 'open' ? 'Opening...' : 'Open'}
                   icon={ExternalLink}
+                  variant="secondary"
                   loading={files.busy === 'open'}
                   disabled={working && files.busy !== 'open'}
                   onPress={files.open}
@@ -50,12 +58,7 @@ export default function DetailsSheet({ row, pcPath, onCopy, onClose }: Props) {
               </>
             ) : null}
             {pcPath ? (
-              <Button
-                title="Copy PC path"
-                icon={Copy}
-                variant={canOpen ? 'secondary' : 'primary'}
-                onPress={() => onCopy('PC path', pcPath)}
-              />
+              <Button title="Copy PC path" icon={Copy} variant="secondary" onPress={() => onCopy('PC path', pcPath)} />
             ) : null}
             <Button title="Copy app path" variant="secondary" onPress={() => onCopy('App path', row.path)} />
             <Button title="Copy name" variant="secondary" onPress={() => onCopy('Name', row.name)} />
@@ -105,9 +108,43 @@ export default function DetailsSheet({ row, pcPath, onCopy, onClose }: Props) {
             </View>
           ) : null}
 
+          {canUse && !files.busy && !files.saved ? (
+            <View style={{ gap: 4 }}>
+              <Text variant="caption" tone="muted">
+                <Text variant="caption" style={{ fontWeight: '700' }}>Download</Text> keeps a copy on your phone
+                {files.saveFolder ? `: ${files.saveFolder}.` : ': you choose the folder once.'}{' '}
+                <Text variant="caption" style={{ fontWeight: '700' }}>Open</Text> uses a temporary copy that the app deletes after a day.
+              </Text>
+              {Platform.OS === 'android' && files.saveFolder ? (
+                <Button title="Change download folder" variant="ghost" size="sm" onPress={files.changeFolder} />
+              ) : null}
+            </View>
+          ) : null}
+
           {files.busy ? (
             <Text tone="muted" accessibilityLiveRegion="polite">
-              Copying to your phone... {Math.round((files.progress ?? 0) * 100)}%
+              {files.busy === 'download'
+                ? `Copying to your phone, then saving to ${files.saveFolder ?? 'the folder you choose'}... ${Math.round((files.progress ?? 0) * 100)}%`
+                : `Copying to a temporary folder in this app... ${Math.round((files.progress ?? 0) * 100)}%`}
+            </Text>
+          ) : null}
+
+          {files.saved ? (
+            <View style={{ padding: 12, borderRadius: radius.md, backgroundColor: colors.primarySoft, gap: 8 }}>
+              <Text variant="bodyStrong">Saved on your phone</Text>
+              <Text selectable>
+                {files.saved.where} › {files.saved.fileName}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                <Button title="Open" icon={ExternalLink} variant="tonal" size="sm" onPress={files.saved.open} />
+                <Button title="Show folder" icon={FolderOpen} variant="tonal" size="sm" onPress={files.saved.show} />
+              </View>
+            </View>
+          ) : null}
+
+          {files.openedTemp && !files.busy ? (
+            <Text variant="caption" tone="muted">
+              That was a temporary copy. To keep the file, tap Download.
             </Text>
           ) : null}
 

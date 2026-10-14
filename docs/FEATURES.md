@@ -123,15 +123,16 @@ Must be finished before any feature that serves file contents.
 - [x] Open, preview and share files from the phone (M)
 - [x] Upload from phone into a single configured drop folder on the PC (M, needs Milestone 5)
 
-## Milestone 7: Brand and monetization
-
-- [x] Brand identity line and About surfaces in the app, the agent dashboard, the terminal banner and the OS metadata (S)
-- [ ] Brand-use note in the README: the MIT licence covers the code, not the Brand Nova name or logo (S)
-- [ ] Choose the monetization model (a short decision note in docs/) (S)
-- [ ] Support links (GitHub Sponsors, Ko-fi or similar) in the README, the agent dashboard and the app About screen (S)
-- [ ] Optional: supporter / tip jar purchase in the app (S-M)
-- [ ] Optional: a one-time paid unlock for the features that justify it (M-L; fits best after Milestone 6)
-- [ ] Store paperwork for payments: pricing, tax and payout setup, purchase disclosures (S)
+## Milestone 7: Pre-launch polish
+- [ ] **Decide the project name** (blocks everything below that mentions it) (S)
+- [ ] Rename pass: constants, package IDs, the discovery service name, packaging files, docs, repo (M)
+- [ ] Organize the docs: one README that sends people to a short docs index (install, quick start, security, API, privacy, releasing, FAQ), with screenshots refreshed (M)
+- [ ] Third-party licence notices (Go modules and npm packages) (S)
+- [ ] Hosted privacy policy and a support contact (S)
+- [ ] The app's first-run walkthrough explains the file-access and upload switches in the dashboard (S)
+- [ ] An "update available" hint in the agent and the app (S, optional)
+- [ ] Store paperwork: accounts, listing text, screenshots, data-safety and privacy forms (M)
+- [ ] Code signing and notarization decisions for Windows and macOS (M)
 
 ### Milestone 8: Publishing
 - [ ] Linux packages (`.deb`, `.rpm`), Homebrew tap, Scoop and winget manifests (M)
@@ -197,3 +198,4 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - 2026-10-13: Milestone 6, slice 1: the agent can send files (off by default), trusted-network banners.
 - 2026-10-13: Milestone 6, slice 2: open, preview and share files in the app.
 - 2026-10-13: Milestone 6, slice 3: upload from the phone into a drop folder. Milestone 6 complete.
+- 2026-10-13: Published v0.1.0-rc3 (pre-release).

@@ -225,6 +225,7 @@ func (ui *WebUI) Handler() http.Handler {
 	mux.HandleFunc("POST /api/fileaccess", ui.api(ui.handleFileAccessSave))
 	mux.HandleFunc("GET /api/uploads", ui.api(ui.handleUploads))
 	mux.HandleFunc("POST /api/uploads", ui.api(ui.handleUploadsSave))
+	mux.HandleFunc("POST /api/uploads/open", ui.api(ui.handleUploadsOpen))
 	mux.HandleFunc("POST /api/fs/mkdir", ui.api(ui.handleMkdir))
 
 	mux.HandleFunc("POST /internal/launch", ui.handleInternalLaunch)
@@ -380,6 +381,11 @@ type statusResponse struct {
 	IndexedAt     int64        `json:"indexed_at"`
 	Files         int          `json:"files"`
 	SyncCount     int64        `json:"sync_count"`
+	FileAccess    bool `json:"file_access"`
+	Uploads       bool `json:"uploads"`
+	Phones        int  `json:"phones"`
+	PhonePort     int  `json:"phone_port"`
+	DashboardPort int  `json:"dashboard_port"`
 	UptimeSeconds int64        `json:"uptime_seconds"`
 	Folders       []folderStat `json:"folders"`
 	Events        []Event      `json:"events"`
@@ -448,6 +454,11 @@ func (ui *WebUI) handleStatus(rw http.ResponseWriter, r *http.Request, _ *sessio
 		IndexedAt:     indexedAt,
 		Files:         files,
 		SyncCount:     syncCount.Load(),
+		FileAccess:    live.AllowFileAccess,
+		Uploads:       live.uploadsEnabled(),
+		Phones:        ui.opts.Devices.Count(),
+		PhonePort:     cfg.Port,
+		DashboardPort: ui.port,
 		UptimeSeconds: int64(time.Since(ui.started).Seconds()),
 		Folders:       folders,
 		Events:        ui.opts.Events.Recent(),

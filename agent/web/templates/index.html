@@ -2,21 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
   <meta name="csrf-token" content="{{.CSRF}}">
   <title>{{.Name}} agent</title>
   <link rel="icon" type="image/png" href="/static/images/logo.png">
   <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/theme.js"></script>
 </head>
-<body>
+<body data-sidebar="expanded">
+  <a class="skip-link" href="#content">Skip to content</a>
+
   <!-- icon set: drawn once, used everywhere with <use href="#i-name"> -->
   <svg class="sprite" aria-hidden="true" focusable="false">
     <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
     <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></symbol>
-    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol>
     <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 8.3-8 9-4.8-.7-8-4.5-8-9V6z"/></symbol>
-    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 1-1 1.7M12 17h.01"/></symbol>
+    <symbol id="i-lifebuoy" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M5.6 5.6l3.9 3.9M14.5 14.5l3.9 3.9M18.4 5.6l-3.9 3.9M9.5 14.5l-3.9 3.9"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M19 7h1M4 12h3M13 12h7M4 17h11M21 17h-1"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="12" r="2.2"/><circle cx="18" cy="17" r="2.2"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
@@ -26,74 +30,95 @@
     <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v8M6.3 6.3a8 8 0 1 0 11.4 0"/></symbol>
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></symbol>
-    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></symbol>
     <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
     <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
     <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2zM12 10v5M12 18h.01"/></symbol>
-    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h9M19 7h1M4 12h3M13 12h7M4 17h11M21 17h-1"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="12" r="2.2"/><circle cx="18" cy="17" r="2.2"/></symbol>
-      <symbol id="i-doctor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+    <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5"/></symbol>
   </svg>
 
   <div class="app">
-    <aside class="sidebar">
+    <div class="scrim" id="scrim" data-action="close-drawer"></div>
+
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
       <div class="brand">
         <span class="logo" aria-hidden="true">
           <img class="logo-img" src="/static/images/logo.png" alt="" width="40" height="40">
           <svg class="icon logo-fallback"><use href="#i-folder"></use></svg>
         </span>
-        <div>
+        <div class="brand-text">
           <strong>{{.Name}}</strong>
           <span class="muted small">{{.Version}}</span>
         </div>
       </div>
 
-      <nav class="nav" aria-label="Dashboard sections">
-        <a class="nav-item" href="#home" data-page="home"><svg class="icon" aria-hidden="true"><use href="#i-home"></use></svg><span>Home</span></a>
-        <a class="nav-item" href="#folders" data-page="folders"><svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg><span>Folders</span></a>
-        <a class="nav-item" href="#pair" data-page="pair"><svg class="icon" aria-hidden="true"><use href="#i-phone"></use></svg><span>Connect a phone</span></a>
-        <a class="nav-item" href="#rules" data-page="rules"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg><span>Privacy &amp; filters</span></a>
-        <a class="nav-item" href="#activity" data-page="activity"><svg class="icon" aria-hidden="true"><use href="#i-activity"></use></svg><span>Activity &amp; logs</span></a>
-        <a class="nav-item" href="#doctor" data-page="doctor"><svg class="icon" aria-hidden="true"><use href="#i-doctor"></use></svg><span>Check my setup</span></a>
-        <a class="nav-item" href="#settings" data-page="settings"><svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg><span>Settings</span></a>
+      <nav class="nav">
+        <a class="nav-item" href="#home" data-page="home" title="Home"><svg class="icon" aria-hidden="true"><use href="#i-home"></use></svg><span class="nav-label">Home</span></a>
+        <a class="nav-item" href="#phones" data-page="phones" title="Phones"><svg class="icon" aria-hidden="true"><use href="#i-phone"></use></svg><span class="nav-label">Phones</span></a>
+        <a class="nav-item" href="#folders" data-page="folders" title="Folders"><svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg><span class="nav-label">Folders</span></a>
+        <a class="nav-item" href="#settings" data-page="settings" title="Settings"><svg class="icon" aria-hidden="true"><use href="#i-sliders"></use></svg><span class="nav-label">Settings</span></a>
+        <a class="nav-item" href="#help" data-page="help" title="Help"><svg class="icon" aria-hidden="true"><use href="#i-lifebuoy"></use></svg><span class="nav-label">Help</span></a>
       </nav>
 
       <div class="sidebar-foot">
-        <button class="btn ghost block" id="open-report" type="button"><svg class="icon" aria-hidden="true"><use href="#i-help"></use></svg>Report a problem</button>
-        <button class="btn ghost block danger-text" id="quit" type="button"><svg class="icon" aria-hidden="true"><use href="#i-power"></use></svg>Quit the agent</button>
+        <button class="nav-item collapse-btn" type="button" data-action="toggle-sidebar" title="Collapse the sidebar" aria-label="Collapse the sidebar"><svg class="icon" aria-hidden="true"><use href="#i-panel"></use></svg><span class="nav-label">Collapse</span></button>
+        <button class="nav-item danger" type="button" data-action="quit" title="Quit the agent"><svg class="icon" aria-hidden="true"><use href="#i-power"></use></svg><span class="nav-label">Quit the agent</span></button>
         <a class="brand-link" href="{{.BrandURL}}" target="_blank" rel="noopener noreferrer">Made by Brand Nova</a>
       </div>
     </aside>
 
     <div class="main-col">
       <header class="topbar">
-        <h1 id="page-title">Home</h1>
-        <div class="pill" role="status" aria-live="polite"><span class="dot" id="status-dot"></span><span id="status-text">Checking...</span></div>
+        <div class="titles">
+          <h1 id="page-title">Home</h1>
+          <p class="muted small" id="page-sub"></p>
+        </div>
+        <div class="top-actions">
+          <div class="pill" role="status" aria-live="polite"><span class="dot" id="status-dot"></span><span id="status-text">Checking...</span></div>
+          <button class="icon-btn" type="button" data-action="report" aria-label="Report a problem" title="Report a problem"><svg class="icon" aria-hidden="true"><use href="#i-lifebuoy"></use></svg></button>
+        </div>
       </header>
 
-      <main id="pages">
-        <!-- ============ Home ============ -->
+      <div class="conn-banner" id="conn-banner" role="alert" hidden>
+        <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+        <span>Lost contact with the agent. Trying again...</span>
+      </div>
+
+      <main id="content" tabindex="-1">
+
+        <!-- ================= Home ================= -->
         <section class="page" data-page="home">
           <div class="trust-banner compact" role="note">
             <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
-            <p><strong>Trusted networks only.</strong> The connection to your phone isn't encrypted. Use your home network, or link just the two with a hotspot. <a href="#pair">How</a></p>
+            <p><strong>Trusted networks only.</strong> The link to your phone isn't encrypted. Use your home network, or link just the two with a hotspot. <a class="how-link" href="#phones/hotspot">How</a></p>
           </div>
-          <div class="hero card ok" id="home-hero">
+
+          <section class="card hero" id="home-hero">
             <div class="hero-icon" id="home-icon"></div>
             <div class="hero-text">
               <h2 id="home-title">Checking...</h2>
               <p class="muted" id="home-sub"></p>
             </div>
             <div class="hero-actions">
-              <button class="btn primary" id="home-rescan" type="button"><svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>Rescan now</button>
-              <a class="btn tonal" href="#pair"><svg class="icon" aria-hidden="true"><use href="#i-phone"></use></svg>Connect a phone</a>
+              <button class="btn primary" id="home-rescan" type="button" data-action="rescan"><svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>Rescan now</button>
+              <a class="btn tonal" href="#phones"><svg class="icon" aria-hidden="true"><use href="#i-phone"></use></svg>Connect a phone</a>
             </div>
-          </div>
+          </section>
 
           <div class="tiles">
-            <div class="tile"><span class="tile-label">Files shared</span><strong id="tile-files">-</strong></div>
-            <div class="tile"><span class="tile-label">Folders</span><strong id="tile-folders">-</strong></div>
-            <div class="tile"><span class="tile-label">Last scan</span><strong id="tile-scan">-</strong></div>
-            <div class="tile"><span class="tile-label">Running for</span><strong id="tile-uptime">-</strong></div>
+            <div class="tile"><span class="tile-label">Files shared</span><strong id="tile-files" class="skeleton">&nbsp;</strong></div>
+            <div class="tile"><span class="tile-label">Folders</span><strong id="tile-folders" class="skeleton">&nbsp;</strong></div>
+            <div class="tile"><span class="tile-label">Phones paired</span><strong id="tile-phones" class="skeleton">&nbsp;</strong></div>
+            <div class="tile"><span class="tile-label">Last scan</span><strong id="tile-scan" class="skeleton">&nbsp;</strong></div>
           </div>
 
           <section class="card" id="getting-started" hidden>
@@ -101,251 +126,344 @@
             <ul class="checklist" id="gs-list"></ul>
           </section>
 
-          <section class="card">
-            <div class="card-head"><h2>Recent activity</h2><a class="link" href="#activity">See all</a></div>
-            <ul class="feed" id="home-activity"></ul>
-          </section>
-        </section>
-
-        <!-- ============ Folders ============ -->
-        <section class="page" data-page="folders" hidden>
-          <div class="page-head">
-            <p class="muted">These folders are listed for your phone. Changes apply right away: the agent saves them, rescans, and your phone gets them at its next update.</p>
-            <button class="btn primary" id="add-folder" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>Add a folder</button>
+          <div class="grid-2">
+            <section class="card">
+              <div class="card-head"><h2>What phones can do</h2><a class="link" href="#settings">Change</a></div>
+              <ul class="perm-list" id="perm-list"></ul>
+            </section>
+            <section class="card">
+              <div class="card-head"><h2>Recent activity</h2><a class="link" href="#help/activity">See all</a></div>
+              <ul class="feed" id="home-activity"></ul>
+            </section>
           </div>
-          <div id="folder-list" class="stack"></div>
-          <section class="card" id="folder-suggestions" hidden>
-            <h2>Quick add</h2>
-            <p class="muted small">Standard folders you aren't sharing yet.</p>
-            <div class="chips" id="suggestion-chips"></div>
-          </section>
+
+          <p class="muted small center-text">Something not working? <a href="#help/check">Check my setup</a></p>
         </section>
 
-        <!-- ============ Connect a phone ============ -->
-        <section class="page" data-page="pair" hidden>
+        <!-- ================= Phones ================= -->
+        <section class="page" data-page="phones" hidden>
           <div class="trust-banner" role="note">
             <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
             <p><strong>Trusted networks only.</strong> The connection between your phone and this PC isn't encrypted. Pair at home, or link just the two of them directly.</p>
           </div>
-          <details class="card how">
-            <summary>Link just your phone and this PC (the most private way)</summary>
-            <ol class="tips">
-              <li>Turn on your phone's hotspot, and connect this computer to it in your Wi-Fi settings. (Or turn on this computer's hotspot and join it from the phone.)</li>
-              <li>Come back to this page and reload it: the address shown here changes to the hotspot's.</li>
-              <li>Scan the QR code. Nobody else is on that little network.</li>
+
+          <details class="card disclosure" id="hotspot">
+            <summary>
+              <span class="disc-icon"><svg class="icon" aria-hidden="true"><use href="#i-wifi"></use></svg></span>
+              <span class="disc-text"><strong>Link just your phone and this PC</strong><span class="muted small">The most private way to connect</span></span>
+              <svg class="icon chev" aria-hidden="true"><use href="#i-down"></use></svg>
+            </summary>
+            <ol class="steps">
+              <li><span class="step-num">1</span><span>Turn on your phone's hotspot, and connect this computer to it in your Wi-Fi settings. (Or turn on this computer's hotspot and join it from the phone.)</span></li>
+              <li><span class="step-num">2</span><span>Come back to this page and reload it: the address shown here changes to the hotspot's.</span></li>
+              <li><span class="step-num">3</span><span>Scan the QR code below. Nobody else is on that little network.</span></li>
             </ol>
           </details>
-          <section class="card">
+
+          <section class="card pair-card">
             <div class="pair-grid">
-              <div class="qr-box"><img id="qr" alt="QR code for pairing" hidden></div>
-              <div>
-                <h2>Scan this code with the app</h2>
+              <div class="qr-box">
+                <img id="qr" alt="QR code for pairing" hidden>
+                <div class="qr-empty" id="qr-empty"><svg class="icon" aria-hidden="true"><use href="#i-wifi"></use></svg><span>No network address found</span></div>
+              </div>
+              <div class="pair-info">
+                <h2>Pair a new phone</h2>
                 <ol class="steps">
                   <li><span class="step-num">1</span><span>Open the app on your phone and tap <strong>Scan QR code</strong>.</span></li>
                   <li><span class="step-num">2</span><span>Point the camera at this code.</span></li>
                   <li><span class="step-num">3</span><span>Tap <strong>Update</strong> in the app. Your files appear.</span></li>
                 </ol>
+
                 <div class="code-box">
                   <span class="muted small">Pairing code</span>
                   <code class="big-code" id="pair-code">-</code>
                   <span class="muted small" id="pair-expiry"></span>
                 </div>
                 <div class="btn-row"><button class="btn tonal" id="pair-new" type="button"><svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>New code</button></div>
+
                 <p id="pair-warning" class="alert" hidden><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg><span>The agent couldn't work out this computer's network address. Are you connected to Wi-Fi or a network cable? You can set the address yourself with the <code>-host</code> option.</span></p>
+
+                <details class="inline-disc">
+                  <summary>Can't scan? Enter the details by hand<svg class="icon chev" aria-hidden="true"><use href="#i-down"></use></svg></summary>
+                  <p class="muted small">In the app choose &ldquo;Enter details manually&rdquo; and type:</p>
+                  <dl class="kv">
+                    <dt>Address</dt><dd><code id="address">-</code></dd>
+                    <dt>Code</dt><dd><code id="address-code">-</code></dd>
+                  </dl>
+                  <div id="others" hidden>
+                    <p class="muted small">This computer also has other addresses. If the QR code doesn't work, try one of these in manual entry:</p>
+                    <div class="chips" id="others-list"></div>
+                  </div>
+                  <p class="muted small">Still can't connect? <a href="#help/check">Check my setup</a>.</p>
+                </details>
+
+                <p class="muted small fine-print">Each code works once and stops working after ten minutes, so a photo of the screen can't be used later. Show it only to your own devices.</p>
               </div>
             </div>
           </section>
 
           <section class="card">
-            <h2>Can't scan?</h2>
-            <p class="muted">In the app choose &ldquo;Enter details manually&rdquo; and type:</p>
-            <dl class="kv">
-              <dt>Address</dt><dd><code id="address">-</code></dd>
-              <dt>Code</dt><dd><code id="address-code">-</code></dd>
-            </dl>
-            <div id="others" hidden>
-              <p class="muted small">This computer also has other addresses. If the QR code doesn't work, try one of these in manual entry:</p>
-              <div class="chips" id="others-list"></div>
-            </div>
-            <p class="notice"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg><span>Each code works once and stops working after ten minutes, so a photo of the screen can't be used later. Show it only to your own devices.</span></p>
-            <p class="muted small">Still can't connect? <a href="#doctor">Check my setup</a>.</p>
-          </section>
-
-          <section class="card">
-            <h2>Paired phones</h2>
+            <div class="card-head"><h2>Paired phones</h2></div>
             <p class="muted small">Each phone gets its own key. Remove a phone here and it can no longer read your file list.</p>
             <div class="stack" id="phone-list"></div>
-            <p class="muted small" id="phone-empty" hidden>No phone is paired yet.</p>
+            <div class="empty-state" id="phone-empty" hidden>
+              <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#i-phone"></use></svg></span>
+              <strong>No phone is paired yet</strong>
+              <span class="muted small">Scan the code above with the app to add your first one.</span>
+            </div>
             <div class="alert" id="legacy-note" hidden>
               <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
-              <div><span id="legacy-text"></span> <button class="link" id="legacy-off" type="button">Turn off the shared token</button></div>
+              <span>Some phones are still connected the old way, with a shared token. Pair them again, then switch that off in <a href="#settings/advanced">Advanced settings</a>.</span>
             </div>
           </section>
         </section>
 
-        <!-- ============ Privacy & filters ============ -->
-        <section class="page" data-page="rules" hidden>
-          <section class="card">
-            <div class="row-between">
-              <div>
-                <h2>Include hidden files</h2>
-                <p class="muted small">Files and folders whose names start with a dot (like <code>.config</code>). Keeping it off is the safer choice.</p>
-              </div>
-              <label class="switch"><input type="checkbox" id="rule-hidden" aria-label="Include hidden files"><span class="track"></span></label>
-            </div>
-          </section>
-
-          <section class="card">
-            <h2>Your own rules</h2>
-            <p class="muted small">Skip anything whose name matches. Use <code>*</code> as a wildcard, for example <code>*.tmp</code>, <code>node_modules</code> or <code>draft-*</code>.</p>
-            <div class="input-row">
-              <input class="input" id="rule-input" type="text" placeholder="*.tmp" autocomplete="off" aria-label="New rule">
-              <button class="btn primary" id="rule-add" type="button">Add rule</button>
-            </div>
-            <div class="chips" id="rule-chips"></div>
-            <p class="muted small" id="rule-empty">You haven't added any rules.</p>
-          </section>
-
-          <section class="card">
-            <h2>Test a path</h2>
-            <p class="muted small">Paste a path from your computer, or the way the phone shows it (like <code>Documents/work/notes.txt</code>), to see whether it would be shared.</p>
-            <div class="input-row">
-              <input class="input" id="test-input" type="text" placeholder="Documents/.env" autocomplete="off" aria-label="Path to test">
-              <button class="btn tonal" id="test-run" type="button"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>Test</button>
-            </div>
-            <div class="verdict" id="test-result" hidden></div>
-          </section>
-
-          <section class="card">
-            <h2>Always skipped</h2>
-            <p class="muted small">These protect you without any setup.</p>
-            <div id="builtin"></div>
-          </section>
-        </section>
-
-        <!-- ============ Activity & logs ============ -->
-        <section class="page" data-page="activity" hidden>
-          <div class="tabs" role="tablist">
-            <button class="tab" id="tab-activity" role="tab" aria-selected="true" aria-controls="panel-activity" type="button">Activity</button>
-            <button class="tab" id="tab-log" role="tab" aria-selected="false" aria-controls="panel-log" type="button">Technical log</button>
+        <!-- ================= Folders ================= -->
+        <section class="page" data-page="folders" hidden>
+          <div class="tabs" role="tablist" aria-label="Folders">
+            <button class="tab" type="button" role="tab" data-tab="shared" aria-selected="true">Shared folders</button>
+            <button class="tab" type="button" role="tab" data-tab="filters" aria-selected="false" tabindex="-1">Privacy filters</button>
           </div>
 
-          <section class="card" id="panel-activity" role="tabpanel">
-            <ul class="feed" id="feed"></ul>
-          </section>
-
-          <section class="card" id="panel-log" role="tabpanel" hidden>
-            <div class="toolbar">
-              <select class="input" id="log-filter" aria-label="Show">
-                <option value="all">Everything</option>
-                <option value="warn">Warnings and errors</option>
-                <option value="error">Errors only</option>
-              </select>
-              <input class="input grow" id="log-search" type="search" placeholder="Search the log" aria-label="Search the log">
-              <button class="btn ghost" id="log-download" type="button"><svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>Download</button>
-              <button class="btn ghost" id="log-open" type="button"><svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg>Open folder</button>
+          <div class="tabpanel" role="tabpanel" data-panel="shared">
+            <div class="panel-head">
+              <p class="muted">Your phone can see the names of the files in these folders. Changes apply right away: the agent saves them, rescans, and your phone gets them at its next update.</p>
+              <button class="btn primary" id="add-folder" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>Add a folder</button>
             </div>
-            <div class="log-view" id="log-view" tabindex="0" aria-label="Log lines"></div>
-            <p class="muted small">Log file: <code id="log-path">-</code></p>
-          </section>
+            <div class="stack" id="folder-list"></div>
+            <section class="card" id="folder-suggestions" hidden>
+              <h2>Quick add</h2>
+              <p class="muted small">Standard folders you aren't sharing yet.</p>
+              <div class="chips" id="suggestion-chips"></div>
+            </section>
+          </div>
+
+          <div class="tabpanel" role="tabpanel" data-panel="filters" hidden>
+            <section class="card">
+              <div class="setting-row">
+                <div class="setting-text">
+                  <strong>Include hidden files</strong>
+                  <span class="muted small">Files and folders whose names start with a dot (like <code>.config</code>). Keeping this off is the safer choice.</span>
+                </div>
+                <label class="switch"><input type="checkbox" id="rule-hidden" aria-label="Include hidden files"><span class="track"></span></label>
+              </div>
+            </section>
+
+            <section class="card">
+              <h2>Your own rules</h2>
+              <p class="muted small">Skip anything whose name matches. Use <code>*</code> as a wildcard, for example <code>*.tmp</code>, <code>node_modules</code> or <code>draft-*</code>.</p>
+              <div class="input-row">
+                <input class="input" id="rule-input" type="text" placeholder="*.tmp" autocomplete="off" aria-label="New rule">
+                <button class="btn primary" id="rule-add" type="button">Add rule</button>
+              </div>
+              <div class="chips" id="rule-chips"></div>
+              <p class="muted small" id="rule-empty">You haven't added any rules.</p>
+            </section>
+
+            <section class="card">
+              <h2>Test a path</h2>
+              <p class="muted small">Paste a path from your computer, or the way the phone shows it (like <code>Documents/work/notes.txt</code>), to see whether it would be shared.</p>
+              <div class="input-row">
+                <input class="input" id="test-input" type="text" placeholder="Documents/.env" autocomplete="off" aria-label="Path to test">
+                <button class="btn tonal" id="test-run" type="button"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>Test</button>
+              </div>
+              <div class="verdict" id="test-result" hidden></div>
+            </section>
+
+            <details class="card disclosure">
+              <summary>
+                <span class="disc-icon"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg></span>
+                <span class="disc-text"><strong>Always skipped</strong><span class="muted small">These protect you without any setup</span></span>
+                <svg class="icon chev" aria-hidden="true"><use href="#i-down"></use></svg>
+              </summary>
+              <div id="builtin"></div>
+            </details>
+          </div>
         </section>
 
-        <!-- ============ Check my setup ============ -->
-        <section class="page" data-page="doctor" hidden>
-          <section class="card">
-            <div class="row-between">
-              <div>
-                <h2>Check my setup</h2>
-                <p class="muted small">Looks at your settings, folders, network and ports, and tells you what to fix if your phone can't connect. It changes nothing.</p>
-              </div>
-              <div class="btn-row">
-                <button class="btn ghost" id="doctor-copy" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#i-copy"></use></svg>Copy results</button>
-                <button class="btn primary" id="doctor-run" type="button"><svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>Run the checks</button>
-              </div>
-            </div>
-          </section>
-
-          <div class="verdict" id="doctor-summary" hidden></div>
-          <div class="stack" id="doctor-results"></div>
-
-          <section class="card" id="doctor-tips" hidden>
-            <h2>Phone still can't connect?</h2>
-            <ol class="tips">
-              <li>Make sure the phone and this computer are on the same Wi-Fi or network. A guest network often stops devices from seeing each other.</li>
-              <li>Turn off any VPN on the phone and on this computer, or add the VPN's range to <code>allowed_networks</code> in the settings file.</li>
-              <li>Open <code id="doctor-ping-url">-</code> in the phone's browser. If it shows <code>{"error":"unauthorized"}</code>, the network is fine and only the token is wrong: scan the QR code again. If it doesn't load, something between the phone and this computer is blocking it, usually a firewall or a router setting.</li>
-            </ol>
-          </section>
-        </section>
-
-        <!-- ============ Settings ============ -->
+        <!-- ================= Settings ================= -->
         <section class="page" data-page="settings" hidden>
-          <section class="card">
-            <div class="row-between">
-              <div>
-                <h2>Let my phone open and download files</h2>
-                <p class="muted small">Off by default, so your phone can only see file names. When it's on, a paired phone can open, preview and save any file the agent lists. Files travel without encryption: use it only on a network you trust.</p>
+          <section class="group">
+            <h2 class="group-title">Appearance</h2>
+            <div class="card">
+              <div class="setting-row">
+                <div class="setting-text"><strong>Theme</strong><span class="muted small">Match your computer, or choose light or dark.</span></div>
+                <div class="seg" role="radiogroup" aria-label="Theme">
+                  <button class="seg-btn" type="button" role="radio" data-theme-choice="system" aria-checked="true"><svg class="icon" aria-hidden="true"><use href="#i-monitor"></use></svg>System</button>
+                  <button class="seg-btn" type="button" role="radio" data-theme-choice="light" aria-checked="false"><svg class="icon" aria-hidden="true"><use href="#i-sun"></use></svg>Light</button>
+                  <button class="seg-btn" type="button" role="radio" data-theme-choice="dark" aria-checked="false"><svg class="icon" aria-hidden="true"><use href="#i-moon"></use></svg>Dark</button>
+                </div>
               </div>
-              <label class="switch"><input type="checkbox" id="fileaccess-switch" aria-label="Let my phone open and download files"><span class="track"></span></label>
             </div>
-          </section>
-          <section class="card">
-            <div class="row-between">
-              <div>
-                <h2>Receive files from my phone</h2>
-                <p class="muted small">Off by default. When it's on, a paired phone can send files into one drop folder on this computer. Nothing is ever overwritten, and the phone can't put files anywhere else. Files travel without encryption: use a network you trust.</p>
-              </div>
-              <label class="switch"><input type="checkbox" id="upload-switch" aria-label="Receive files from my phone"><span class="track"></span></label>
-            </div>
-            <dl class="kv upload-form">
-              <dt>Drop folder</dt>
-              <dd>
-                <code id="upload-dir">-</code>
-                <button class="link" id="upload-choose" type="button">Choose...</button>
-                <p class="alert" id="upload-dir-warn" hidden>This folder can't be found right now. Is a drive unplugged?</p>
-              </dd>
-              <dt>Largest file</dt>
-              <dd><input class="input small-input" id="upload-max" type="number" min="1" max="4096" inputmode="numeric" aria-label="Largest file in megabytes"> <span class="muted">MB</span></dd>
-              <dt>Files per hour</dt>
-              <dd><input class="input small-input" id="upload-hour" type="number" min="1" max="1000" inputmode="numeric" aria-label="Files per hour"> <span class="muted small" id="upload-used"></span></dd>
-              <dt>Program files</dt>
-              <dd><label class="check"><input type="checkbox" id="upload-programs"> Also accept program files (.exe, .bat, .sh ...)</label></dd>
-            </dl>
-            <div class="btn-row"><button class="btn primary" id="upload-save" type="button">Save</button></div>
-          </section>
-          <section class="card">
-            <div class="row-between">
-              <div>
-                <h2>Start when I sign in</h2>
-                <p class="muted small">The agent starts quietly in the background each time you sign in to this computer, so your phone can always update. It never opens a window by itself.</p>
-              </div>
-              <label class="switch"><input type="checkbox" id="autostart-switch" aria-label="Start when I sign in" disabled><span class="track"></span></label>
-            </div>
-            <p class="alert" id="autostart-error" hidden></p>
           </section>
 
-          <section class="card">
-            <h2>About</h2>
-            <dl class="kv">
-              <dt>Version</dt><dd>{{.Version}}</dd>
-              <dt>License</dt><dd>MIT License</dd>
-              <dt>Made by</dt><dd><a href="{{.BrandURL}}" target="_blank" rel="noopener noreferrer">Brand Nova</a></dd>
-            </dl>
-            <p class="muted small">Your files stay on your computer. The agent shares only file names, and only with phones you have paired.</p>
+          <section class="group">
+            <h2 class="group-title">When the agent runs</h2>
+            <div class="card">
+              <div class="setting-row">
+                <div class="setting-text"><strong>Start when I sign in</strong><span class="muted small">The agent starts quietly in the background each time you sign in, so your phone can always update. It never opens a window by itself.</span></div>
+                <label class="switch"><input type="checkbox" id="autostart-switch" aria-label="Start when I sign in" disabled><span class="track"></span></label>
+              </div>
+              <p class="alert" id="autostart-error" hidden></p>
+            </div>
           </section>
+
+          <section class="group" id="permissions">
+            <h2 class="group-title">What your phone can do</h2>
+            <div class="card">
+              <div class="setting-row">
+                <div class="setting-text"><strong>Open and download files</strong><span class="muted small">Off by default, so your phone can only see file names. When it's on, a paired phone can open, preview and save any file the agent lists. Files travel without encryption: use it only on a network you trust.</span></div>
+                <label class="switch"><input type="checkbox" id="fileaccess-switch" aria-label="Let my phone open and download files"><span class="track"></span></label>
+              </div>
+            </div>
+
+            <div class="card" id="uploads-card">
+              <div class="setting-row">
+                <div class="setting-text"><strong>Receive files from my phone</strong><span class="muted small">Off by default. When it's on, a paired phone can send files into one drop folder on this computer. Nothing is ever overwritten, and the phone can't put files anywhere else. Files travel without encryption: use a network you trust.</span></div>
+                <label class="switch"><input type="checkbox" id="upload-switch" aria-label="Receive files from my phone"><span class="track"></span></label>
+              </div>
+              <div class="folder-pick">
+                <span class="muted small">Drop folder</span>
+                <code id="upload-dir">-</code>
+                <div class="btn-row">
+                  <button class="btn tonal sm" id="upload-choose" type="button"><svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg>Choose...</button>
+                  <button class="btn ghost sm" id="upload-open" type="button">Open folder</button>
+                </div>
+                <p class="alert" id="upload-dir-warn" hidden>This folder can't be found right now. Is a drive unplugged?</p>
+              </div>
+              <div class="btn-row"><button class="btn primary" id="upload-save" type="button">Save</button></div>
+              <p class="muted small">Limits and program files are in <a href="#settings/advanced">Advanced settings</a>.</p>
+            </div>
+          </section>
+
+          <details class="card advanced" id="advanced">
+            <summary>
+              <span class="disc-icon"><svg class="icon" aria-hidden="true"><use href="#i-sliders"></use></svg></span>
+              <span class="disc-text"><strong>Advanced settings</strong><span class="muted small">Most people never need these</span></span>
+              <svg class="icon chev" aria-hidden="true"><use href="#i-down"></use></svg>
+            </summary>
+
+            <div class="adv-block">
+              <h3>Receiving files</h3>
+              <dl class="kv">
+                <dt>Largest file</dt>
+                <dd><input class="input small-input" id="upload-max" type="number" min="1" max="4096" inputmode="numeric" aria-label="Largest file in megabytes"> <span class="muted">MB</span></dd>
+                <dt>Files per hour</dt>
+                <dd><input class="input small-input" id="upload-hour" type="number" min="1" max="1000" inputmode="numeric" aria-label="Files per hour"> <span class="muted small" id="upload-used"></span></dd>
+                <dt>Program files</dt>
+                <dd><label class="check"><input type="checkbox" id="upload-programs"> Also accept program files</label></dd>
+              </dl>
+              <div class="callout info">
+                <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+                <div>
+                  <strong>What are program files?</strong>
+                  <p>Files that run code when you open them, such as <code>.exe</code>, <code>.msi</code>, <code>.bat</code>, <code>.sh</code> or <code>.app</code>. A harmful one can damage your computer or steal your information, so your PC refuses them by default. Only allow them if you know exactly which files you will send and where they came from.</p>
+                </div>
+              </div>
+              <div class="btn-row"><button class="btn primary" id="upload-save-adv" type="button">Save</button></div>
+            </div>
+
+            <div class="adv-block">
+              <h3>Old shared token</h3>
+              <p class="muted small">Before each phone had its own key, all phones shared one token. It still works for phones paired that way. Switch it off once every phone has paired again with a code.</p>
+              <div class="setting-row">
+                <span id="legacy-state">-</span>
+                <button class="btn danger sm" id="legacy-off" type="button" hidden>Turn it off</button>
+              </div>
+            </div>
+
+            <div class="adv-block">
+              <h3>Where things are</h3>
+              <dl class="kv">
+                <dt>Version</dt><dd id="adv-version">-</dd>
+                <dt>Address</dt><dd><code id="adv-address">-</code> <button class="link" type="button" data-action="copy-address">Copy</button></dd>
+                <dt>Discovery</dt><dd id="adv-discovery">-</dd>
+                <dt>Settings file</dt><dd><code id="adv-config">-</code></dd>
+                <dt>Log file</dt><dd><code id="adv-log">-</code> <button class="link" type="button" data-action="open-logs">Open folder</button></dd>
+              </dl>
+            </div>
+          </details>
+
+          <section class="group">
+            <h2 class="group-title">About</h2>
+            <div class="card">
+              <dl class="kv">
+                <dt>Version</dt><dd>{{.Version}}</dd>
+                <dt>License</dt><dd>MIT License</dd>
+                <dt>Made by</dt><dd><a href="{{.BrandURL}}" target="_blank" rel="noopener noreferrer">Brand Nova</a></dd>
+              </dl>
+              <p class="muted small">Your files stay on your computer. The agent shares only file names, and only with phones you have paired.</p>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= Help ================= -->
+        <section class="page" data-page="help" hidden>
+          <div class="tabs" role="tablist" aria-label="Help">
+            <button class="tab" type="button" role="tab" data-tab="check" aria-selected="true">Check my setup</button>
+            <button class="tab" type="button" role="tab" data-tab="activity" aria-selected="false" tabindex="-1">Activity</button>
+            <button class="tab" type="button" role="tab" data-tab="log" aria-selected="false" tabindex="-1">Technical log</button>
+          </div>
+
+          <div class="tabpanel" role="tabpanel" data-panel="check">
+            <section class="card">
+              <div class="row-between">
+                <div>
+                  <h2>Check my setup</h2>
+                  <p class="muted small">Looks at your settings, folders, network and ports, and tells you what to fix if your phone can't connect. It changes nothing.</p>
+                </div>
+                <div class="btn-row">
+                  <button class="btn ghost" id="doctor-copy" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#i-copy"></use></svg>Copy results</button>
+                  <button class="btn primary" id="doctor-run" type="button"><svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>Run the checks</button>
+                </div>
+              </div>
+            </section>
+            <div class="verdict" id="doctor-summary" hidden></div>
+            <div class="stack" id="doctor-results"></div>
+            <section class="card" id="doctor-tips" hidden>
+              <h2>Phone still can't connect?</h2>
+              <ol class="tips">
+                <li>Make sure the phone and this computer are on the same Wi-Fi or network. A guest network often stops devices from seeing each other.</li>
+                <li>Turn off any VPN on the phone and on this computer, or add the VPN's range to <code>allowed_networks</code> in the settings file.</li>
+                <li>Open <code id="doctor-ping-url">-</code> in the phone's browser. If it shows <code>{"error":"unauthorized"}</code>, the network is fine and only the key is wrong: scan the QR code again. If it doesn't load, something between the phone and this computer is blocking it, usually a firewall or a router setting.</li>
+              </ol>
+            </section>
+            <p class="muted small center-text">Still stuck? <button class="link" type="button" data-action="report">Report a problem</button></p>
+          </div>
+
+          <div class="tabpanel" role="tabpanel" data-panel="activity" hidden>
+            <section class="card"><ul class="feed" id="feed"></ul></section>
+          </div>
+
+          <div class="tabpanel" role="tabpanel" data-panel="log" hidden>
+            <section class="card">
+              <div class="toolbar">
+                <select class="input" id="log-filter" aria-label="Show">
+                  <option value="all">Everything</option>
+                  <option value="warn">Warnings and errors</option>
+                  <option value="error">Errors only</option>
+                </select>
+                <input class="input grow" id="log-search" type="search" placeholder="Search the log" aria-label="Search the log">
+                <button class="btn ghost" id="log-download" type="button"><svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>Download</button>
+                <button class="btn ghost" id="log-open" type="button"><svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg>Open folder</button>
+              </div>
+              <div class="log-view" id="log-view" tabindex="0" aria-label="Log lines"></div>
+              <p class="muted small">Log file: <code id="log-path">-</code></p>
+            </section>
+          </div>
         </section>
       </main>
     </div>
   </div>
 
-  <!-- ============ Dialogs ============ -->
+  <!-- ================= Dialogs ================= -->
   <dialog id="picker" aria-labelledby="picker-title">
     <div class="dialog-body">
       <div class="dialog-head"><h2 id="picker-title">Choose a folder to share</h2><button class="icon-btn" data-close type="button" aria-label="Close"><svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg></button></div>
       <div class="picker-bar">
-        <button class="btn ghost" id="picker-up" type="button"><svg class="icon" aria-hidden="true"><use href="#i-up"></use></svg>Up</button>
-        <button class="btn ghost" id="picker-home" type="button"><svg class="icon" aria-hidden="true"><use href="#i-home"></use></svg>Home</button>
-        <button class="btn ghost" id="picker-mkdir" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>New folder</button>
+        <button class="btn ghost sm" id="picker-up" type="button"><svg class="icon" aria-hidden="true"><use href="#i-up"></use></svg>Up</button>
+        <button class="btn ghost sm" id="picker-home" type="button"><svg class="icon" aria-hidden="true"><use href="#i-home"></use></svg>Home</button>
+        <button class="btn ghost sm" id="picker-mkdir" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>New folder</button>
         <code class="picker-path" id="picker-current">-</code>
       </div>
       <div class="picker-list" id="picker-list" role="list"></div>
@@ -364,7 +482,7 @@
   <dialog id="report" aria-labelledby="report-title">
     <div class="dialog-body">
       <div class="dialog-head"><h2 id="report-title">Report a problem</h2><button class="icon-btn" data-close type="button" aria-label="Close"><svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg></button></div>
-      <p class="muted">This is what you can send with your report. It has the version, your system, your settings and the latest log lines. Your access token and your user name in paths are removed. Read it before you share it.</p>
+      <p class="muted">This is what you can send with your report. It has the version, your system, your settings and the latest log lines. Your access keys and your user name in paths are removed. Read it before you share it.</p>
       <label class="check"><input type="checkbox" id="report-mask" checked> Hide the last two parts of IP addresses</label>
       <textarea class="report-text" id="report-text" readonly aria-label="The report"></textarea>
       <div class="dialog-actions">
@@ -385,7 +503,7 @@
     </div>
   </dialog>
 
-  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
 
   <script src="/static/app.js"></script>
 </body>

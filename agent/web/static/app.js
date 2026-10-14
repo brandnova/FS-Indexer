@@ -6,6 +6,11 @@
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
   const SVG_NS = 'http://www.w3.org/2000/svg';
+  const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const store = {
+    get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
+    set(key, value) { try { if (value == null) localStorage.removeItem(key); else localStorage.setItem(key, value); } catch (e) { /* private mode */ } },
+  };
 
   // The logo: if the image is missing, show the folder icon instead.
   $$('.logo-img').forEach((img) => {
@@ -16,7 +21,9 @@
 
   if (!csrfMeta) return; // the "link expired" page needs nothing else
 
-  // ---------- helpers ----------
+  // =====================================================================
+  // Helpers
+  // =====================================================================
   function h(tag, props, ...kids) {
     const node = document.createElement(tag);
     for (const [key, value] of Object.entries(props || {})) {
@@ -62,28 +69,25 @@
     if (hrs < 48) return hrs + (hrs === 1 ? ' hour ago' : ' hours ago');
     return Math.round(hrs / 24) + ' days ago';
   };
-  const fmtUptime = (s) => {
-    if (s < 90) return 'a minute';
-    const m = Math.round(s / 60);
-    if (m < 90) return m + ' minutes';
-    const hrs = Math.round(m / 60);
-    if (hrs < 48) return hrs + ' hours';
-    return Math.round(hrs / 24) + ' days';
-  };
+  const unskeleton = (el, text) => { el.classList.remove('skeleton'); el.textContent = text; };
 
-  // ---------- state and API ----------
-  const PAGES = { home: 'Home', folders: 'Folders', pair: 'Connect a phone', rules: 'Privacy & filters', activity: 'Activity & logs', doctor: 'Check my setup', settings: 'Settings' };
-  const state = { status: null, folders: null, rules: null, logLines: [] };
-  let currentPage = 'home';
+  // =====================================================================
+  // State and API
+  // =====================================================================
+  const state = { status: null, folders: null, rules: null, devices: null, uploads: null, logLines: [] };
+  let current = { page: 'home', section: '' };
   let stopped = false;
-  let lastAddress = null;
-  let tokenValue = '';
-  let tokenShown = false;
+  let doctorText = '';
 
   function showStopped(title, text) {
     stopped = true;
-    $('#pages').replaceChildren(h('section', { class: 'card' }, h('h2', null, title), h('p', { class: 'muted' }, text)));
-    $$('.nav-item').forEach((a) => a.setAttribute('aria-current', 'false'));
+    $('#content').replaceChildren(
+      h('section', { class: 'card empty-state' },
+        h('span', { class: 'empty-icon' }, icon('power')),
+        h('h2', null, title),
+        h('p', { class: 'muted' }, text)));
+    $$('.nav-item[data-page]').forEach((a) => a.setAttribute('aria-current', 'false'));
+    $('#conn-banner').hidden = true;
     setStatus('bad', title);
   }
 
@@ -109,12 +113,15 @@
     return data;
   }
   const postJSON = (path, body) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  const oops = (e) => { if (e.message !== 'locked') toast(e.message, 'bad'); };
 
-  // ---------- toasts and dialogs ----------
+  // =====================================================================
+  // UI primitives: toast, confirm, busy buttons, clipboard
+  // =====================================================================
   function toast(message, kind) {
-    const el = h('div', { class: 'toast' + (kind === 'bad' ? ' bad' : '') }, message);
+    const el = h('div', { class: 'toast' + (kind === 'bad' ? ' bad' : '') }, icon(kind === 'bad' ? 'alert' : 'check'), h('span', null, message));
     $('#toasts').append(el);
-    setTimeout(() => el.remove(), kind === 'bad' ? 6000 : 3500);
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 260); }, kind === 'bad' ? 6500 : 3500);
   }
 
   function confirmDialog({ title, text, ok, danger }) {
@@ -133,59 +140,217 @@
     });
   }
 
-  document.addEventListener('click', (e) => {
-    const closer = e.target.closest('[data-close]');
-    if (closer) closer.closest('dialog').close();
-    if (e.target instanceof HTMLDialogElement) e.target.close(); // a click on the backdrop
-  });
+  async function busy(btn, fn) {
+    if (!btn) return fn();
+    btn.disabled = true;
+    btn.classList.add('loading');
+    try { return await fn(); } finally { btn.disabled = false; btn.classList.remove('loading'); }
+  }
 
-  async function copyText(text, button, done) {
+  async function copyText(text, done) {
     try {
       await navigator.clipboard.writeText(text);
       toast(done || 'Copied');
     } catch (e) {
-      toast('Copying isn\'t allowed here. Select the text and copy it yourself.', 'bad');
+      toast("Copying isn't allowed here. Select the text and copy it yourself.", 'bad');
     }
   }
 
-  // ---------- routing ----------
+  // Dialogs: the close button, and a click on the backdrop.
+  document.addEventListener('click', (e) => {
+    const closer = e.target.closest('[data-close]');
+    if (closer) closer.closest('dialog').close();
+    if (e.target instanceof HTMLDialogElement) e.target.close();
+  });
+
+  // =====================================================================
+  // Shell: sidebar, drawer, theme, delegated actions
+  // =====================================================================
+  const SIDEBAR_KEY = 'fsagent.sidebar';
+  const THEME_KEY = 'fsagent.theme';
+
+  function applySidebar(mode) {
+    document.body.dataset.sidebar = mode;
+    const btn = $('[data-action="toggle-sidebar"]');
+    const label = mode === 'collapsed' ? 'Expand the sidebar' : 'Collapse the sidebar';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+  }
+  function initSidebar() {
+    const saved = store.get(SIDEBAR_KEY);
+    applySidebar(saved === 'collapsed' || saved === 'expanded' ? saved : (window.innerWidth < 1100 ? 'collapsed' : 'expanded'));
+  }
+
+  function openDrawer() {
+    document.body.classList.add('nav-open');
+    $('.menu-btn').setAttribute('aria-expanded', 'true');
+    $('.main-col').inert = true;
+    const first = $('.nav-item[aria-current="page"]') || $('.nav-item');
+    if (first) first.focus();
+  }
+  function closeDrawer() {
+    if (!document.body.classList.contains('nav-open')) return;
+    document.body.classList.remove('nav-open');
+    $('.menu-btn').setAttribute('aria-expanded', 'false');
+    $('.main-col').inert = false;
+  }
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
+
+  function currentTheme() {
+    const t = store.get(THEME_KEY);
+    return t === 'light' || t === 'dark' ? t : 'system';
+  }
+  function setTheme(choice) {
+    if (choice === 'light' || choice === 'dark') { store.set(THEME_KEY, choice); document.documentElement.dataset.theme = choice; }
+    else { store.set(THEME_KEY, null); delete document.documentElement.dataset.theme; }
+    renderTheme();
+  }
+  function renderTheme() {
+    const t = currentTheme();
+    $$('[data-theme-choice]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.themeChoice === t)));
+  }
+
+  document.addEventListener('click', (e) => {
+    const themeBtn = e.target.closest('[data-theme-choice]');
+    if (themeBtn) { setTheme(themeBtn.dataset.themeChoice); return; }
+
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    switch (el.dataset.action) {
+      case 'toggle-sidebar': {
+        const next = document.body.dataset.sidebar === 'collapsed' ? 'expanded' : 'collapsed';
+        applySidebar(next);
+        store.set(SIDEBAR_KEY, next);
+        break;
+      }
+      case 'open-drawer': openDrawer(); break;
+      case 'close-drawer': closeDrawer(); break;
+      case 'report': openReport(); break;
+      case 'quit': quit(); break;
+      case 'rescan': rescan(el); break;
+      case 'open-logs': openLogFolder(); break;
+      case 'copy-address': copyText((state.status && state.status.address) || '', 'Address copied'); break;
+      default: break;
+    }
+  });
+
+  // =====================================================================
+  // Router: #page, #page/section  (tabs, or the id of something to open)
+  // =====================================================================
+  const PAGES = {
+    home: { title: 'Home', sub: 'Your PC is ready to share files with your phone.' },
+    phones: { title: 'Phones', sub: 'Pair phones and manage who can connect.' },
+    folders: { title: 'Folders', sub: 'Choose what your phone can see.', tabs: ['shared', 'filters'] },
+    settings: { title: 'Settings', sub: 'Permissions, startup and advanced options.' },
+    help: { title: 'Help', sub: 'Check your setup, see what happened, report a problem.', tabs: ['check', 'activity', 'log'] },
+  };
+  // Links from earlier versions (and the first-run link from the terminal) keep working.
+  const ALIASES = { pair: 'phones', rules: 'folders/filters', activity: 'help/activity', doctor: 'help/check', logs: 'help/log' };
+
+  function parseHash() {
+    let raw = decodeURIComponent((location.hash || '#home').slice(1));
+    if (ALIASES[raw]) raw = ALIASES[raw];
+    const [page, section = ''] = raw.split('/');
+    return PAGES[page] ? { page, section } : { page: 'home', section: '' };
+  }
+
+  function go(hash) {
+    if (location.hash === '#' + hash) route(); else location.hash = hash;
+  }
+
+  function selectTab(page, tab) {
+    const root = $('.page[data-page="' + page + '"]');
+    $$('[role="tab"]', root).forEach((b) => {
+      const on = b.dataset.tab === tab;
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
+    $$('[data-panel]', root).forEach((p) => { p.hidden = p.dataset.panel !== tab; });
+  }
+
   function route() {
     if (stopped) return;
-    const name = (location.hash || '#home').slice(1);
-    showPage(PAGES[name] ? name : 'home');
+    const { page, section } = parseHash();
+    const def = PAGES[page];
+    const tab = def.tabs ? (def.tabs.includes(section) ? section : def.tabs[0]) : '';
+    current = { page, section: def.tabs ? tab : section };
+
+    $$('.page').forEach((p) => { p.hidden = p.dataset.page !== page; });
+    $$('.nav-item[data-page]').forEach((a) => a.setAttribute('aria-current', a.dataset.page === page ? 'page' : 'false'));
+    $('#page-title').textContent = def.title;
+    $('#page-sub').textContent = def.sub;
+    document.title = def.title + ' · agent';
+    closeDrawer();
+
+    if (def.tabs) selectTab(page, tab);
+    onShow(page, def.tabs ? tab : section);
+
+    const target = !def.tabs && section ? document.getElementById(section) : null;
+    if (target) {
+      if (target.tagName === 'DETAILS') target.open = true;
+      target.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
+      target.classList.add('flash');
+      setTimeout(() => target.classList.remove('flash'), 1700);
+    } else {
+      window.scrollTo(0, 0);
+    }
   }
 
-  function showPage(name) {
-    currentPage = name;
-    $$('.page').forEach((p) => { p.hidden = p.dataset.page !== name; });
-    $$('.nav-item').forEach((a) => a.setAttribute('aria-current', a.dataset.page === name ? 'page' : 'false'));
-    $('#page-title').textContent = PAGES[name];
-    document.title = PAGES[name] + ' · agent';
-    if (name === 'folders') loadFolders();
-    if (name === 'pair') loadPairing();
-    if (name === 'rules') loadRules();
-    if (name === 'activity') { renderFeed(); if (!$('#panel-log').hidden) loadLogs(); }
-    if (name === 'settings') { loadAutostart(); loadFileAccess(); loadUploads(); }
-    if (name === 'doctor' && !doctorText) runDoctor();
+  function onShow(page, where) {
+    if (page === 'phones') loadPairing();
+    if (page === 'folders') { if (where === 'filters') loadRules(); else loadFolders(); }
+    if (page === 'settings') loadSettings();
+    if (page === 'help') {
+      if (where === 'check' && !doctorText) runDoctor();
+      if (where === 'activity') renderFeed();
+      if (where === 'log') loadLogs();
+    }
   }
 
-  // ---------- status (all pages) ----------
+  // Tabs: click, and arrow keys.
+  document.addEventListener('click', (e) => {
+    const tabBtn = e.target.closest('[role="tab"]');
+    if (!tabBtn) return;
+    const page = tabBtn.closest('.page').dataset.page;
+    go(tabBtn.dataset.tab === PAGES[page].tabs[0] ? page : page + '/' + tabBtn.dataset.tab);
+  });
+  document.addEventListener('keydown', (e) => {
+    const tabBtn = e.target.closest('[role="tab"]');
+    if (!tabBtn || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+    const tabs = $$('[role="tab"]', tabBtn.closest('[role="tablist"]'));
+    let i = tabs.indexOf(tabBtn);
+    if (e.key === 'ArrowRight') i = (i + 1) % tabs.length;
+    else if (e.key === 'ArrowLeft') i = (i - 1 + tabs.length) % tabs.length;
+    else i = e.key === 'Home' ? 0 : tabs.length - 1;
+    e.preventDefault();
+    tabs[i].focus();
+    tabs[i].click();
+  });
+
+  // =====================================================================
+  // Status (every page) and Home
+  // =====================================================================
   async function refresh() {
     if (stopped) return;
     try {
       state.status = await api('/api/status');
+      $('#conn-banner').hidden = true;
       renderStatus();
     } catch (e) {
-      if (e.message !== 'locked' && !stopped) setStatus('bad', 'The agent is not responding');
+      if (e.message !== 'locked' && !stopped) {
+        setStatus('bad', 'Not responding');
+        $('#conn-banner').hidden = false;
+      }
     }
   }
 
   function renderStatus() {
     const s = state.status;
     if (!s) return;
-    setStatus(s.scanning ? 'busy' : 'ok', s.scanning ? 'Scanning your folders...' : 'Running');
+    setStatus(s.scanning ? 'busy' : 'ok', s.scanning ? 'Scanning...' : 'Running');
     renderHome();
-    if (currentPage === 'activity') renderFeed();
+    if (current.page === 'help' && current.section === 'activity') renderFeed();
+    if (current.page === 'settings') renderAdvancedInfo();
   }
 
   function renderEvents(list, events, limit) {
@@ -195,33 +360,45 @@
     for (const e of shown) list.append(h('li', null, h('time', null, fmtClock(e.time)), h('span', null, e.text)));
   }
 
+  function permRow(iconName, label, hint, on, always) {
+    return h('li', { class: 'perm' },
+      h('span', { class: 'perm-icon' }, icon(iconName)),
+      h('span', { class: 'perm-text' }, h('strong', null, label), h('span', { class: 'muted small' }, hint)),
+      always ? h('span', { class: 'chip ok' }, 'On') : h('a', { class: 'chip ' + (on ? 'ok' : 'off'), href: '#settings', title: 'Change in Settings' }, on ? 'On' : 'Off'));
+  }
+
   function renderHome() {
     const s = state.status;
     const enabled = s.folders.filter((f) => !f.disabled);
 
-    let kind = 'ok', title = 'Everything is running', sub, glyph = 'check';
+    let kind = 'ok', glyph = 'check', title = 'Your files are ready', sub;
     if (s.scanning) {
       kind = 'busy'; glyph = 'refresh'; title = 'Looking through your folders...'; sub = 'This can take a moment.';
     } else if (!enabled.length) {
-      kind = 'warn'; glyph = 'folder'; title = 'No folders are shared'; sub = 'Add a folder to start sharing files with your phone.';
+      kind = 'warn'; glyph = 'folder'; title = 'Nothing is shared yet'; sub = 'Add a folder to start sharing files with your phone.';
     } else {
       sub = 'Sharing ' + fmtNumber(s.files) + ' files from ' + enabled.length + (enabled.length === 1 ? ' folder.' : ' folders.');
     }
-    $('#home-hero').className = 'hero card ' + kind;
+    $('#home-hero').className = 'card hero ' + kind;
     $('#home-icon').replaceChildren(icon(glyph));
     $('#home-title').textContent = title;
     $('#home-sub').textContent = sub;
     $('#home-rescan').disabled = s.scanning;
 
-    $('#tile-files').textContent = fmtNumber(s.files);
-    $('#tile-folders').textContent = enabled.length + (enabled.length === s.folders.length ? '' : ' of ' + s.folders.length);
-    $('#tile-scan').textContent = fmtAgo(s.indexed_at);
-    $('#tile-uptime').textContent = fmtUptime(s.uptime_seconds);
+    unskeleton($('#tile-files'), fmtNumber(s.files));
+    unskeleton($('#tile-folders'), enabled.length + (enabled.length === s.folders.length ? '' : ' of ' + s.folders.length));
+    unskeleton($('#tile-phones'), fmtNumber(s.phones));
+    unskeleton($('#tile-scan'), fmtAgo(s.indexed_at));
+
+    $('#perm-list').replaceChildren(
+      permRow('file', 'See file names', 'Any paired phone', true, true),
+      permRow('download', 'Open and download files', s.file_access ? 'Phones can read your files' : 'Phones can only see names', s.file_access),
+      permRow('upload', 'Send files to this PC', s.uploads ? 'Into your drop folder' : 'Switched off', s.uploads));
 
     const steps = [
       { done: enabled.length > 0, text: 'Choose the folders to share', href: '#folders' },
       { done: s.indexed_at > 0, text: 'Your folders are scanned' },
-      { done: s.sync_count > 0, text: 'Connect your phone and tap Update', href: '#pair' },
+      { done: s.sync_count > 0, text: 'Connect your phone and tap Update', href: '#phones' },
     ];
     $('#getting-started').hidden = s.sync_count > 0;
     $('#gs-list').replaceChildren(...steps.map((step, i) =>
@@ -230,28 +407,124 @@
         h('span', { class: 'check-text' }, step.text),
         !step.done && step.href ? h('a', { class: 'link', href: step.href }, 'Open') : null)));
 
-    renderEvents($('#home-activity'), s.events, 5);
+    renderEvents($('#home-activity'), s.events, 6);
   }
 
   function renderFeed() {
-    if (state.status) renderEvents($('#feed'), state.status.events, 50);
+    if (state.status) renderEvents($('#feed'), state.status.events, 60);
   }
 
-  $('#home-rescan').addEventListener('click', async () => {
-    $('#home-rescan').disabled = true;
-    try {
-      const r = await postJSON('/api/rescan');
-      toast(r.started ? 'Scanning your folders...' : 'A scan is already running.');
-      await refresh();
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
-  });
+  async function rescan(btn) {
+    await busy(btn, async () => {
+      try {
+        const r = await postJSON('/api/rescan');
+        toast(r.started ? 'Scanning your folders...' : 'A scan is already running.');
+        await refresh();
+      } catch (e) { oops(e); }
+    });
+  }
 
-  // ---------- folders ----------
-  async function loadFolders() {
+  // =====================================================================
+  // Phones: pairing code, QR, paired phones
+  // =====================================================================
+  let lastQrKey = null;
+  let pairExpires = 0;
+  let pairRefreshing = false;
+
+  async function loadPairing() {
+    if (stopped) return;
+    try { renderPairing(await api('/api/pairing')); } catch (e) { /* the status check shows the problem */ }
+    loadDevices();
+  }
+
+  function renderPairing(p) {
+    pairExpires = p.expires_at;
+    $('#pair-code').textContent = p.code;
+    $('#address-code').textContent = p.code;
+    $('#address').textContent = p.address || 'unknown';
+    $('#pair-warning').hidden = Boolean(p.address);
+
+    const qr = $('#qr');
+    if (!p.address) {
+      qr.hidden = true;
+      $('#qr-empty').hidden = false;
+      lastQrKey = null;
+    } else {
+      $('#qr-empty').hidden = true;
+      const key = p.address + '|' + p.code;
+      if (key !== lastQrKey) {
+        lastQrKey = key;
+        qr.src = '/api/pairing.svg?t=' + Date.now();
+        qr.hidden = false;
+      }
+    }
+    const others = p.others || [];
+    $('#others').hidden = others.length === 0;
+    $('#others-list').replaceChildren(...others.map((ip) => h('span', { class: 'chip' }, ip)));
+    tickExpiry();
+  }
+
+  function tickExpiry() {
+    const note = $('#pair-expiry');
+    if (!pairExpires) { note.textContent = ''; return; }
+    const left = Math.round(pairExpires - Date.now() / 1000);
+    if (left <= 0) {
+      note.textContent = 'Getting a new code...';
+      if (current.page === 'phones' && !pairRefreshing) {
+        pairRefreshing = true;
+        loadPairing().finally(() => { pairRefreshing = false; });
+      }
+      return;
+    }
+    note.textContent = 'Works once, for ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') + ' more';
+  }
+  setInterval(() => { if (!stopped && current.page === 'phones') tickExpiry(); }, 1000);
+
+  $('#pair-new').addEventListener('click', (e) => busy(e.currentTarget, async () => {
     try {
-      state.folders = await api('/api/folders');
-      renderFolders();
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
+      renderPairing(await postJSON('/api/pairing/new'));
+      toast('A new code is ready');
+    } catch (err) { oops(err); }
+  }));
+
+  async function loadDevices() {
+    try { renderDevices(await api('/api/devices')); } catch (e) { /* the status check shows the problem */ }
+  }
+
+  function renderDevices(res) {
+    state.devices = res;
+    $('#phone-empty').hidden = res.devices.length > 0;
+    $('#phone-list').replaceChildren(...res.devices.map((d) =>
+      h('article', { class: 'phone-card' },
+        h('div', { class: 'phone-icon' }, icon('phone')),
+        h('div', { class: 'folder-meta' },
+          h('strong', null, d.name),
+          h('span', { class: 'folder-path' }, 'Paired ' + fmtAgo(d.created_at) + ' · last seen ' + fmtAgo(d.last_seen) + (d.last_ip ? ' · ' + d.last_ip : ''))),
+        h('button', { class: 'btn danger sm', type: 'button', onClick: () => revokeDevice(d) }, icon('trash'), 'Remove'))));
+    $('#legacy-note').hidden = !res.legacy.enabled || !(res.devices.length > 0 || res.legacy.last_used);
+    renderLegacy();
+  }
+
+  async function revokeDevice(d) {
+    const yes = await confirmDialog({
+      title: 'Remove ' + d.name + '?',
+      text: 'This phone can no longer read your file list. It can pair again with a new code.',
+      ok: 'Remove phone', danger: true,
+    });
+    if (!yes) return;
+    try {
+      await postJSON('/api/devices/revoke', { id: d.id });
+      toast(d.name + ' was removed');
+    } catch (e) { oops(e); }
+    loadDevices();
+    refresh();
+  }
+
+  // =====================================================================
+  // Folders: shared folders, picker, privacy filters
+  // =====================================================================
+  async function loadFolders() {
+    try { state.folders = await api('/api/folders'); renderFolders(); } catch (e) { oops(e); }
   }
 
   function switchEl(checked, label, onChange) {
@@ -262,10 +535,7 @@
   }
 
   async function changeFolder(body, message) {
-    try {
-      await postJSON('/api/folders/update', body);
-      toast(message);
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
+    try { await postJSON('/api/folders/update', body); toast(message); } catch (e) { oops(e); }
     await loadFolders();
     refresh();
   }
@@ -277,44 +547,39 @@
       ok: 'Stop sharing', danger: true,
     });
     if (!yes) return;
-    try {
-      await postJSON('/api/folders/remove', { label: f.label });
-      toast('Stopped sharing ' + f.label);
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
+    try { await postJSON('/api/folders/remove', { label: f.label }); toast('Stopped sharing ' + f.label); } catch (e) { oops(e); }
     await loadFolders();
     refresh();
   }
 
   function folderCard(f) {
+    const hidden = h('input', { type: 'checkbox' });
+    hidden.checked = f.include_hidden;
+    hidden.addEventListener('change', () => changeFolder({ label: f.label, include_hidden: hidden.checked }, 'Saved'));
+
     return h('article', { class: 'folder-card' + (f.disabled ? ' off' : '') },
       h('div', { class: 'folder-icon' }, icon('folder')),
       h('div', { class: 'folder-meta' },
         h('strong', null, f.label),
         h('span', { class: 'folder-path' }, f.path),
         h('div', { class: 'folder-stats' },
-          f.missing ? h('span', { class: 'chip warn' }, 'Can\'t be found right now') : null,
+          f.missing ? h('span', { class: 'chip warn' }, "Can't be found right now") : null,
           h('span', { class: 'chip' }, fmtNumber(f.files) + ' files'),
           h('span', { class: 'chip' }, fmtSize(f.bytes)))),
       h('div', { class: 'folder-side' },
         switchEl(!f.disabled, 'Share ' + f.label, (on) => changeFolder({ label: f.label, disabled: !on }, on ? 'Sharing ' + f.label : f.label + ' is switched off')),
-        h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Stop sharing ' + f.label, onClick: () => removeFolderAsk(f) }, icon('trash'))),
-      h('div', { class: 'folder-extra' },
-        h('label', { class: 'check' },
-          (() => {
-            const box = h('input', { type: 'checkbox' });
-            box.checked = f.include_hidden;
-            box.addEventListener('change', () => changeFolder({ label: f.label, include_hidden: box.checked }, 'Saved'));
-            return box;
-          })(),
-          'Include hidden files in this folder')));
+        h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Stop sharing ' + f.label, title: 'Stop sharing', onClick: () => removeFolderAsk(f) }, icon('trash'))),
+      h('div', { class: 'folder-extra' }, h('label', { class: 'check' }, hidden, 'Include hidden files in this folder')));
   }
 
   function renderFolders() {
     const { folders, suggestions } = state.folders;
     $('#folder-list').replaceChildren(...(folders.length
       ? folders.map(folderCard)
-      : [h('div', { class: 'card' }, h('h2', null, 'No folders yet'), h('p', { class: 'muted' }, 'Add a folder to start sharing files with your phone.'))]));
-
+      : [h('div', { class: 'empty-state' },
+          h('span', { class: 'empty-icon' }, icon('folder')),
+          h('strong', null, 'No folders yet'),
+          h('span', { class: 'muted small' }, 'Add a folder to start sharing files with your phone.'))]));
     $('#folder-suggestions').hidden = suggestions.length === 0;
     $('#suggestion-chips').replaceChildren(...suggestions.map((s) =>
       h('button', { class: 'chip', type: 'button', onClick: () => addFolder(s.path, s.label) }, icon('plus'), s.label)));
@@ -336,20 +601,16 @@
 
   $('#add-folder').addEventListener('click', () => openPicker(''));
 
-  // ---------- the folder picker ----------
+  // ----- the folder picker (also used to choose the drop folder) -----
   const picker = { path: '', parent: '', home: '', hidden: false };
+  let pickerOnPick = null;
 
   function showPickerError(message) {
     const box = $('#picker-error');
     box.hidden = !message;
     box.textContent = message || '';
   }
-
-  function folderName(path) {
-    return path.split(/[\\/]/).filter(Boolean).pop() || '';
-  }
-
-  let pickerOnPick = null; // when set, the picker chooses a folder for something else (the drop folder)
+  const folderName = (path) => path.split(/[\\/]/).filter(Boolean).pop() || '';
 
   async function openPicker(start, opts) {
     pickerOnPick = opts && opts.onPick ? opts.onPick : null;
@@ -384,9 +645,7 @@
       }
       if (res.truncated) list.append(h('div', { class: 'picker-empty' }, 'Only the first 1,000 folders are shown.'));
       list.scrollTop = 0;
-    } catch (e) {
-      if (e.message !== 'locked') showPickerError(e.message);
-    }
+    } catch (e) { if (e.message !== 'locked') showPickerError(e.message); }
   }
 
   $('#picker-up').addEventListener('click', () => loadPicker(picker.parent));
@@ -401,7 +660,6 @@
     }
     addFolder(picker.path, $('#picker-label').value.trim());
   });
-
   $('#picker-mkdir').addEventListener('click', async () => {
     if (!picker.path) { showPickerError('Open a folder first.'); return; }
     const name = window.prompt('Name of the new folder');
@@ -412,124 +670,9 @@
     } catch (e) { if (e.message !== 'locked') showPickerError(e.message); }
   });
 
-  // ---------- connect a phone ----------
-  let lastQrKey = null;
-  let pairExpires = 0;
-  let pairRefreshing = false;
-
-  async function loadPairing() {
-    if (stopped) return;
-    try {
-      renderPairing(await api('/api/pairing'));
-    } catch (e) { /* the status check shows the problem */ }
-    loadDevices();
-  }
-
-  function renderPairing(p) {
-    pairExpires = p.expires_at;
-    $('#pair-code').textContent = p.code;
-    $('#address-code').textContent = p.code;
-    $('#address').textContent = p.address || 'unknown';
-    $('#pair-warning').hidden = Boolean(p.address);
-
-    const qr = $('#qr');
-    if (!p.address) {
-      qr.hidden = true;
-      lastQrKey = null;
-    } else {
-      const key = p.address + '|' + p.code;
-      if (key !== lastQrKey) {
-        lastQrKey = key;
-        qr.src = '/api/pairing.svg?t=' + Date.now();
-        qr.hidden = false;
-      }
-    }
-    const others = p.others || [];
-    $('#others').hidden = others.length === 0;
-    $('#others-list').replaceChildren(...others.map((ip) => h('span', { class: 'chip' }, ip)));
-    tickExpiry();
-  }
-
-  function tickExpiry() {
-    const note = $('#pair-expiry');
-    if (!pairExpires) { note.textContent = ''; return; }
-    const left = Math.round(pairExpires - Date.now() / 1000);
-    if (left <= 0) {
-      note.textContent = 'Getting a new code...';
-      if (currentPage === 'pair' && !pairRefreshing) {
-        pairRefreshing = true;
-        loadPairing().finally(() => { pairRefreshing = false; });
-      }
-      return;
-    }
-    note.textContent = 'Works once, for ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') + ' more';
-  }
-  setInterval(() => { if (!stopped && currentPage === 'pair') tickExpiry(); }, 1000);
-
-  $('#pair-new').addEventListener('click', async () => {
-    try {
-      renderPairing(await postJSON('/api/pairing/new'));
-      toast('A new code is ready');
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
-  });
-
-  async function loadDevices() {
-    try {
-      renderDevices(await api('/api/devices'));
-    } catch (e) { /* the status check shows the problem */ }
-  }
-
-  function renderDevices(res) {
-    $('#phone-empty').hidden = res.devices.length > 0;
-    $('#phone-list').replaceChildren(...res.devices.map((d) =>
-      h('article', { class: 'phone-card' },
-        h('div', { class: 'phone-icon' }, icon('phone')),
-        h('div', { class: 'folder-meta' },
-          h('strong', null, d.name),
-          h('span', { class: 'folder-path' },
-            'Paired ' + fmtAgo(d.created_at) + ' · last seen ' + fmtAgo(d.last_seen) + (d.last_ip ? ' · ' + d.last_ip : ''))),
-        h('button', { class: 'btn danger', type: 'button', onClick: () => revokeDevice(d) }, icon('trash'), 'Remove'))));
-
-    $('#legacy-note').hidden = !res.legacy.enabled;
-    $('#legacy-text').textContent = res.legacy.last_used
-      ? 'An older version of the app used the old shared token ' + fmtAgo(res.legacy.last_used) + '. Update the app and pair again, then turn the shared token off.'
-      : 'The old shared token still works for phones paired before per-phone keys existed. Once every phone has paired again, turn it off.';
-  }
-
-  async function revokeDevice(d) {
-    const yes = await confirmDialog({
-      title: 'Remove ' + d.name + '?',
-      text: 'This phone can no longer read your file list. It can pair again with a new code.',
-      ok: 'Remove phone', danger: true,
-    });
-    if (!yes) return;
-    try {
-      await postJSON('/api/devices/revoke', { id: d.id });
-      toast(d.name + ' was removed');
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
-    loadDevices();
-  }
-
-  $('#legacy-off').addEventListener('click', async () => {
-    const yes = await confirmDialog({
-      title: 'Turn off the shared token?',
-      text: 'Phones that were paired the old way stop working until they pair again with a code. Phones paired with a code are not affected.',
-      ok: 'Turn it off', danger: true,
-    });
-    if (!yes) return;
-    try {
-      await postJSON('/api/devices/legacy', { enabled: false });
-      toast('The shared token is off');
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
-    loadDevices();
-  });
-
-  // ---------- privacy and filters ----------
+  // ----- privacy filters -----
   async function loadRules() {
-    try {
-      state.rules = await api('/api/rules');
-      renderRules();
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
+    try { state.rules = await api('/api/rules'); renderRules(); } catch (e) { oops(e); }
   }
 
   function renderRules() {
@@ -539,7 +682,6 @@
     $('#rule-chips').replaceChildren(...r.extra.map((p) =>
       h('span', { class: 'chip' }, h('code', null, p),
         h('button', { type: 'button', 'aria-label': 'Remove the rule ' + p, onClick: () => saveRules(r.extra.filter((x) => x !== p), r.include_hidden) }, icon('x')))));
-
     $('#builtin').replaceChildren(...r.builtin.map((g) =>
       h('div', { class: 'rule-group' },
         h('h3', null, g.source[0].toUpperCase() + g.source.slice(1)),
@@ -548,14 +690,10 @@
   }
 
   async function saveRules(extra, includeHidden) {
-    try {
-      await postJSON('/api/rules', { extra, include_hidden: includeHidden });
-      toast('Saved. The agent is rescanning.');
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
+    try { await postJSON('/api/rules', { extra, include_hidden: includeHidden }); toast('Saved. The agent is rescanning.'); } catch (e) { oops(e); }
     await loadRules();
     refresh();
   }
-
   $('#rule-hidden').addEventListener('change', (e) => saveRules(state.rules.extra, e.target.checked));
 
   function addRule() {
@@ -577,22 +715,232 @@
       box.hidden = false;
       box.className = 'verdict ' + (v.shared ? 'yes' : 'no');
       box.replaceChildren(icon(v.shared ? 'check' : 'x'), h('span', null, v.reason));
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
+    } catch (e) { oops(e); }
   }
   $('#test-run').addEventListener('click', runTest);
   $('#test-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') runTest(); });
 
-  // ---------- activity and logs ----------
-  function selectTab(which) {
-    const isLog = which === 'log';
-    $('#tab-activity').setAttribute('aria-selected', String(!isLog));
-    $('#tab-log').setAttribute('aria-selected', String(isLog));
-    $('#panel-activity').hidden = isLog;
-    $('#panel-log').hidden = !isLog;
-    if (isLog) loadLogs(); else renderFeed();
+  // =====================================================================
+  // Settings
+  // =====================================================================
+  async function loadSettings() {
+    renderTheme();
+    await Promise.all([loadAutostart(), loadFileAccess(), loadUploads(), loadDevices()]);
+    renderAdvancedInfo();
   }
-  $('#tab-activity').addEventListener('click', () => selectTab('activity'));
-  $('#tab-log').addEventListener('click', () => selectTab('log'));
+
+  async function loadAutostart() {
+    const box = $('#autostart-switch');
+    const note = $('#autostart-error');
+    try {
+      const a = await api('/api/autostart');
+      box.checked = a.enabled;
+      box.disabled = !a.supported;
+      note.hidden = !a.detail;
+      note.textContent = a.detail || '';
+    } catch (e) { oops(e); }
+  }
+  $('#autostart-switch').addEventListener('change', async (e) => {
+    const box = e.target;
+    const wanted = box.checked;
+    box.disabled = true;
+    try {
+      await postJSON('/api/autostart', { enabled: wanted });
+      toast(wanted ? 'The agent will start when you sign in' : "The agent won't start by itself any more");
+    } catch (err) { oops(err); }
+    await loadAutostart();
+  });
+
+  async function loadFileAccess() {
+    try { $('#fileaccess-switch').checked = (await api('/api/fileaccess')).enabled; } catch (e) { oops(e); }
+  }
+  $('#fileaccess-switch').addEventListener('change', async (e) => {
+    const box = e.target;
+    const wanted = box.checked;
+    if (wanted) {
+      const yes = await confirmDialog({
+        title: 'Let paired phones open and download files?',
+        text: 'A paired phone will be able to read any file the agent lists, not just its name. Files travel over your network without encryption: do this only on a network you trust, or with a direct hotspot link between your phone and this PC.',
+        ok: 'Turn it on',
+      });
+      if (!yes) { box.checked = false; return; }
+    }
+    box.disabled = true;
+    try {
+      await postJSON('/api/fileaccess', { enabled: wanted });
+      toast(wanted ? 'Phones can now open files' : 'Phones can only see file names');
+    } catch (err) { oops(err); }
+    box.disabled = false;
+    await loadFileAccess();
+    refresh();
+  });
+
+  // ----- receiving files -----
+  let uploadDir = '';
+
+  async function loadUploads() {
+    try {
+      state.uploads = await api('/api/uploads');
+      uploadDir = state.uploads.dir;
+      renderUploads();
+    } catch (e) { oops(e); }
+  }
+
+  function renderUploadDir() {
+    const u = state.uploads;
+    $('#upload-dir').textContent = uploadDir || 'No folder chosen yet';
+    $('#upload-dir-warn').hidden = !(uploadDir && u && uploadDir === u.dir && !u.dir_ok);
+    $('#upload-open').hidden = !(u && u.dir && uploadDir === u.dir);
+  }
+
+  function renderUploads() {
+    const u = state.uploads;
+    $('#upload-switch').checked = u.enabled;
+    $('#upload-max').value = u.max_mb;
+    $('#upload-hour').value = u.per_hour;
+    $('#upload-programs').checked = u.allow_programs;
+    $('#upload-used').textContent = u.used_this_hour + ' received in the last hour';
+    renderUploadDir();
+  }
+
+  $('#upload-choose').addEventListener('click', () =>
+    openPicker(uploadDir || '', { onPick: (path) => { uploadDir = path; renderUploadDir(); } }));
+  $('#upload-open').addEventListener('click', async () => {
+    try { await postJSON('/api/uploads/open'); } catch (e) { oops(e); }
+  });
+
+  async function saveUploads(btn) {
+    const wanted = $('#upload-switch').checked;
+    if (wanted && !state.uploads.enabled) {
+      const yes = await confirmDialog({
+        title: 'Let paired phones send files to this PC?',
+        text: 'A paired phone will be able to put files into the drop folder (never overwriting anything). Files travel over your network without encryption: do this only on a network you trust, or with a direct hotspot link between your phone and this PC.',
+        ok: 'Turn it on',
+      });
+      if (!yes) { $('#upload-switch').checked = false; return; }
+    }
+    await busy(btn, async () => {
+      try {
+        state.uploads = await postJSON('/api/uploads', {
+          enabled: wanted,
+          dir: uploadDir,
+          max_mb: Number($('#upload-max').value),
+          per_hour: Number($('#upload-hour').value),
+          allow_programs: $('#upload-programs').checked,
+        });
+        uploadDir = state.uploads.dir;
+        renderUploads();
+        toast('Saved');
+        refresh();
+      } catch (e) { oops(e); }
+    });
+  }
+  $('#upload-save').addEventListener('click', (e) => saveUploads(e.currentTarget));
+  $('#upload-save-adv').addEventListener('click', (e) => saveUploads(e.currentTarget));
+
+  // ----- advanced: the old shared token, and where things are -----
+  function renderLegacy() {
+    const l = state.devices && state.devices.legacy;
+    if (!l) return;
+    $('#legacy-state').textContent = l.enabled
+      ? 'On.' + (l.last_used ? ' An older app used it ' + fmtAgo(l.last_used) + '.' : '')
+      : 'Off. Only phones paired with a code can connect.';
+    $('#legacy-off').hidden = !l.enabled;
+  }
+
+  $('#legacy-off').addEventListener('click', async () => {
+    const yes = await confirmDialog({
+      title: 'Turn off the old shared token?',
+      text: 'Phones that were paired the old way stop working until they pair again with a code. Phones paired with a code are not affected.',
+      ok: 'Turn it off', danger: true,
+    });
+    if (!yes) return;
+    try { await postJSON('/api/devices/legacy', { enabled: false }); toast('The old shared token is off'); } catch (e) { oops(e); }
+    loadDevices();
+  });
+
+  function renderAdvancedInfo() {
+    const s = state.status;
+    if (!s) return;
+    $('#adv-version').textContent = s.version + ' (API ' + s.api_version + ')';
+    $('#adv-address').textContent = s.address || 'unknown';
+    $('#adv-discovery').textContent = s.discovery || '-';
+    $('#adv-config').textContent = s.config_path || '-';
+    $('#adv-log').textContent = s.log_path || '-';
+  }
+
+  async function openLogFolder() {
+    try { await postJSON('/api/logs/open'); } catch (e) { oops(e); }
+  }
+
+  // =====================================================================
+  // Help: check my setup, activity, technical log, report
+  // =====================================================================
+  const CHECK_ICONS = { ok: 'check', warn: 'alert', fail: 'x', info: 'info' };
+
+  async function runDoctor() {
+    const btn = $('#doctor-run');
+    btn.disabled = true;
+    $('#doctor-summary').hidden = true;
+    $('#doctor-tips').hidden = true;
+    $('#doctor-results').replaceChildren(h('div', { class: 'card muted' }, 'Checking... this takes a few seconds.'));
+    try { renderDoctor(await postJSON('/api/doctor')); }
+    catch (e) { $('#doctor-results').replaceChildren(); oops(e); }
+    btn.disabled = false;
+  }
+
+  function checkCard(c) {
+    return h('article', { class: 'check-card' },
+      h('div', { class: 'check-icon ' + c.status }, icon(CHECK_ICONS[c.status] || 'info')),
+      h('div', { class: 'check-body' },
+        h('strong', null, c.title),
+        h('div', { class: 'check-detail' }, c.detail),
+        c.fix ? h('div', { class: 'check-fix' }, h('strong', null, 'How to fix: '), c.fix) : null));
+  }
+
+  function checkRow(c) {
+    return h('div', { class: 'check-row' },
+      h('div', { class: 'check-icon ' + c.status }, icon(CHECK_ICONS[c.status] || 'info')),
+      h('div', { class: 'check-body' }, h('strong', null, c.title), h('div', { class: 'check-detail' }, c.detail)));
+  }
+
+  function renderDoctor(res) {
+    const rank = { fail: 0, warn: 1, info: 2, ok: 3 };
+    const sorted = [...res.checks].sort((a, b) => rank[a.status] - rank[b.status]);
+    const attention = sorted.filter((c) => c.status === 'fail' || c.status === 'warn');
+    const rest = sorted.filter((c) => c.status === 'info' || c.status === 'ok');
+
+    $('#doctor-results').replaceChildren(
+      ...attention.map(checkCard),
+      rest.length
+        ? h('details', { class: 'card disclosure', open: attention.length === 0 },
+            h('summary', null,
+              h('span', { class: 'disc-icon' }, icon('check')),
+              h('span', { class: 'disc-text' }, h('strong', null, rest.length + (rest.length === 1 ? ' check looks fine' : ' checks look fine')), h('span', { class: 'muted small' }, 'Tap to see them')),
+              h('svg', { class: 'icon chev', 'aria-hidden': 'true' }, h('use', { href: '#i-down' }))),
+            h('div', { class: 'check-list' }, rest.map(checkRow)))
+        : null);
+
+    const kind = res.fail > 0 ? 'no' : res.warn > 0 ? 'maybe' : 'yes';
+    const text = res.fail > 0
+      ? res.fail + (res.fail === 1 ? ' problem to fix' : ' problems to fix')
+      : res.warn > 0
+        ? 'Mostly fine: ' + res.warn + (res.warn === 1 ? ' thing to look at' : ' things to look at')
+        : 'Everything checks out';
+    const summary = $('#doctor-summary');
+    summary.hidden = false;
+    summary.className = 'verdict ' + kind;
+    summary.replaceChildren(icon(kind === 'yes' ? 'check' : 'alert'), h('span', null, text));
+
+    const addr = state.status && state.status.address ? state.status.address : 'ADDRESS:PORT';
+    $('#doctor-ping-url').textContent = 'http://' + addr + '/api/v1/ping';
+    $('#doctor-tips').hidden = false;
+
+    doctorText = res.checks.map((c) => '[' + c.status.toUpperCase() + '] ' + c.title + ': ' + c.detail + (c.fix ? '\n    How to fix: ' + c.fix : '')).join('\n');
+    $('#doctor-copy').hidden = false;
+  }
+  $('#doctor-run').addEventListener('click', runDoctor);
+  $('#doctor-copy').addEventListener('click', () => copyText(doctorText, 'Results copied'));
 
   async function loadLogs() {
     try {
@@ -600,7 +948,7 @@
       state.logLines = res.lines;
       $('#log-path').textContent = res.path || 'not available';
       renderLogs();
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
+    } catch (e) { oops(e); }
   }
 
   const LOG_LINE = /^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) (DEBUG|INFO|WARN|ERROR)\s+(.*)$/;
@@ -621,209 +969,46 @@
     }
     if (atEnd) view.scrollTop = view.scrollHeight;
   }
-
   $('#log-filter').addEventListener('change', loadLogs);
   $('#log-search').addEventListener('input', renderLogs);
   $('#log-download').addEventListener('click', () => h('a', { href: '/api/logs/download' }).click());
-  $('#log-open').addEventListener('click', async () => {
-    try { await postJSON('/api/logs/open'); }
-    catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
-  });
+  $('#log-open').addEventListener('click', openLogFolder);
 
-  // ---------- report a problem ----------
   async function loadReport() {
     const mask = $('#report-mask').checked ? '1' : '0';
-    try {
-      $('#report-text').value = await api('/api/report?mask=' + mask);
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
+    try { $('#report-text').value = await api('/api/report?mask=' + mask); } catch (e) { oops(e); }
   }
-  $('#open-report').addEventListener('click', () => { $('#report').showModal(); loadReport(); });
+  function openReport() { $('#report').showModal(); loadReport(); }
   $('#report-mask').addEventListener('change', loadReport);
-  $('#report-copy').addEventListener('click', () => copyText($('#report-text').value, null, 'Report copied'));
+  $('#report-copy').addEventListener('click', () => copyText($('#report-text').value, 'Report copied'));
   $('#report-download').addEventListener('click', () => h('a', { href: '/api/report?download=1&mask=' + ($('#report-mask').checked ? '1' : '0') }).click());
 
-  // ---------- quit ----------
-  $('#quit').addEventListener('click', async () => {
+  async function quit() {
     const yes = await confirmDialog({
       title: 'Quit the agent?',
-      text: 'Your phone won\'t be able to update until you start the agent again.',
+      text: "Your phone won't be able to update until you start the agent again.",
       ok: 'Quit the agent', danger: true,
     });
     if (!yes) return;
     try {
       await postJSON('/api/quit');
       showStopped('The agent has stopped', 'You can close this tab. Start the agent again whenever you want to update your phone.');
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
-  });
-
-  // ---------- settings ----------
-  async function loadAutostart() {
-    const box = $('#autostart-switch');
-    const note = $('#autostart-error');
-    try {
-      const a = await api('/api/autostart');
-      box.checked = a.enabled;
-      box.disabled = !a.supported;
-      note.hidden = !a.detail;
-      note.textContent = a.detail || '';
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
+    } catch (e) { oops(e); }
   }
 
-  $('#autostart-switch').addEventListener('change', async (e) => {
-    const box = e.target;
-    const wanted = box.checked;
-    box.disabled = true;
-    try {
-      await postJSON('/api/autostart', { enabled: wanted });
-      toast(wanted ? 'The agent will start when you sign in' : 'The agent won\'t start by itself any more');
-    } catch (err) {
-      if (err.message !== 'locked') toast(err.message, 'bad');
-    }
-    await loadAutostart(); // shows what is really set now
-  });
-
-  // ---------- check my setup ----------
-  const CHECK_ICONS = { ok: 'check', warn: 'alert', fail: 'x', info: 'help' };
-  let doctorText = '';
-
-  async function runDoctor() {
-    const btn = $('#doctor-run');
-    btn.disabled = true;
-    $('#doctor-summary').hidden = true;
-    $('#doctor-tips').hidden = true;
-    $('#doctor-results').replaceChildren(h('div', { class: 'card muted' }, 'Checking... this takes a few seconds.'));
-    try {
-      renderDoctor(await postJSON('/api/doctor'));
-    } catch (e) {
-      $('#doctor-results').replaceChildren();
-      if (e.message !== 'locked') toast(e.message, 'bad');
-    }
-    btn.disabled = false;
-  }
-
-  function renderDoctor(res) {
-    const checks = res.checks;
-    $('#doctor-results').replaceChildren(...checks.map((c) =>
-    h('article', { class: 'check-card' },
-      h('div', { class: 'check-icon ' + c.status }, icon(CHECK_ICONS[c.status] || 'help')),
-      h('div', { class: 'check-body' },
-        h('strong', null, c.title),
-        h('div', { class: 'check-detail' }, c.detail),
-        c.fix ? h('div', { class: 'check-fix' }, h('strong', null, 'How to fix: '), c.fix) : null))));
-
-    const kind = res.fail > 0 ? 'no' : res.warn > 0 ? 'maybe' : 'yes';
-    const text = res.fail > 0
-    ? res.fail + (res.fail === 1 ? ' problem to fix' : ' problems to fix')
-    : res.warn > 0
-    ? 'Mostly fine: ' + res.warn + (res.warn === 1 ? ' thing to look at' : ' things to look at')
-    : 'Everything checks out';
-    const summary = $('#doctor-summary');
-    summary.hidden = false;
-    summary.className = 'verdict ' + kind;
-    summary.replaceChildren(icon(kind === 'yes' ? 'check' : 'alert'), h('span', null, text));
-
-    const addr = state.status && state.status.address ? state.status.address : 'ADDRESS:PORT';
-    $('#doctor-ping-url').textContent = 'http://' + addr + '/api/v1/ping';
-    $('#doctor-tips').hidden = false;
-
-    doctorText = checks.map((c) => '[' + c.status.toUpperCase() + '] ' + c.title + ': ' + c.detail + (c.fix ? '\n    How to fix: ' + c.fix : '')).join('\n');
-    $('#doctor-copy').hidden = false;
-  }
-
-  $('#doctor-run').addEventListener('click', runDoctor);
-  $('#doctor-copy').addEventListener('click', () => copyText(doctorText, null, 'Results copied'));
-
-  // ---------- opening files from the phone ----------
-  async function loadFileAccess() {
-    try {
-      const a = await api('/api/fileaccess');
-      $('#fileaccess-switch').checked = a.enabled;
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
-  }
-
-  $('#fileaccess-switch').addEventListener('change', async (e) => {
-    const box = e.target;
-    const wanted = box.checked;
-    if (wanted) {
-      const yes = await confirmDialog({
-        title: 'Let paired phones open and download files?',
-        text: 'A paired phone will be able to read any file the agent lists, not just its name. Files travel over your network without encryption: do this only on a network you trust, or with a direct hotspot link between your phone and this PC.',
-        ok: 'Turn it on',
-      });
-      if (!yes) { box.checked = false; return; }
-    }
-    box.disabled = true;
-    try {
-      await postJSON('/api/fileaccess', { enabled: wanted });
-      toast(wanted ? 'Phones can now open files' : 'Phones can only see file names');
-    } catch (err) { if (err.message !== 'locked') toast(err.message, 'bad'); }
-    box.disabled = false;
-    await loadFileAccess();
-  });
-
-  // ---------- receiving files from the phone ----------
-  let uploadState = null;
-  let uploadDir = '';
-
-  async function loadUploads() {
-    try {
-      uploadState = await api('/api/uploads');
-      uploadDir = uploadState.dir;
-      renderUploads();
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
-  }
-
-  function renderUploadDir() {
-    $('#upload-dir').textContent = uploadDir || 'No folder chosen yet';
-    $('#upload-dir-warn').hidden = !(uploadDir && uploadDir === uploadState.dir && !uploadState.dir_ok);
-  }
-
-  function renderUploads() {
-    const u = uploadState;
-    $('#upload-switch').checked = u.enabled;
-    $('#upload-max').value = u.max_mb;
-    $('#upload-hour').value = u.per_hour;
-    $('#upload-programs').checked = u.allow_programs;
-    $('#upload-used').textContent = u.used_this_hour + ' received in the last hour';
-    renderUploadDir();
-  }
-
-  $('#upload-choose').addEventListener('click', () =>
-    openPicker(uploadDir || '', { onPick: (path) => { uploadDir = path; renderUploadDir(); } }));
-
-  $('#upload-save').addEventListener('click', async () => {
-    const wanted = $('#upload-switch').checked;
-    if (wanted && !uploadState.enabled) {
-      const yes = await confirmDialog({
-        title: 'Let paired phones send files to this PC?',
-        text: 'A paired phone will be able to put files into the drop folder (never overwriting anything). Files travel over your network without encryption: do this only on a network you trust, or with a direct hotspot link between your phone and this PC.',
-        ok: 'Turn it on',
-      });
-      if (!yes) { $('#upload-switch').checked = false; return; }
-    }
-    try {
-      uploadState = await postJSON('/api/uploads', {
-        enabled: wanted,
-        dir: uploadDir,
-        max_mb: Number($('#upload-max').value),
-        per_hour: Number($('#upload-hour').value),
-        allow_programs: $('#upload-programs').checked,
-      });
-      uploadDir = uploadState.dir;
-      renderUploads();
-      toast('Saved');
-    } catch (e) { if (e.message !== 'locked') toast(e.message, 'bad'); }
-  });
-
-  // ---------- start ----------
+  // =====================================================================
+  // Start
+  // =====================================================================
+  initSidebar();
+  renderTheme();
   window.addEventListener('hashchange', route);
   route();
   refresh();
   setInterval(refresh, 3000);
   setInterval(() => {
     if (stopped || document.hidden) return;
-    if (currentPage === 'folders') loadFolders();
-    if (currentPage === 'pair') loadPairing();
-    if (currentPage === 'activity' && !$('#panel-log').hidden) loadLogs();
+    if (current.page === 'phones') loadPairing();
+    if (current.page === 'folders' && current.section === 'shared') loadFolders();
+    if (current.page === 'help' && current.section === 'log') loadLogs();
   }, 5000);
 })();

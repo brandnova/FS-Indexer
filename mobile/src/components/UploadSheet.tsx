@@ -43,7 +43,7 @@ export default function UploadSheet({ visible, onClose }: { visible: boolean; on
 
       {up.access === 'ready' && up.items.length === 0 ? (
         <Text tone="muted">
-          Choose photos, documents or anything else. They go into the upload folder on your PC
+          Choose photos, documents or anything else. They go into {up.folder ? `the “${up.folder}” folder` : 'the upload folder'} on your PC
           {up.maxMb ? `, up to ${up.maxMb} MB each` : ''}. Nothing there is ever overwritten.
         </Text>
       ) : null}

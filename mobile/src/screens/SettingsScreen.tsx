@@ -138,13 +138,13 @@ export default function SettingsScreen({ onUnpaired }: { onUnpaired: () => void 
         <Card style={styles.cardGap}>
           <InfoRow label="App version" value={Constants.expoConfig?.version ?? '-'} />
           {demo ? null : <InfoRow label="Agent version" value={s.remote?.version ?? '-'} />}
-          <BrandFooter />
           <ActionRow
             icon={Info}
             title="About the agent"
             subtitle="What it is and what it shares"
             onPress={openAgentInfo}
           />
+          <BrandFooter />
         </Card>
       </Section>
 
