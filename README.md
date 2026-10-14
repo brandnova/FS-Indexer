@@ -68,6 +68,8 @@ Start the agent. It shows a QR code and a pairing code. In the app, tap **Scan Q
 
 By default your phone only sees file names. To open, preview and save files, turn on **Let my phone open and download files** under Settings in the dashboard. The agent then sends a file only if it is in the list: not skipped by a rule, not in a folder you switched off, and not a link. Files travel without encryption, so use this only on a trusted network or a direct hotspot link between your phone and your PC.
 
+In the app, tap a file and choose **Open** (it is copied to your phone and opened with the app you'd normally use for it) or **Share** (the share sheet, which also lets you save it to Files or Drive). Images and text files show a preview. Copies are kept only in the app's temporary storage: they are deleted after a day, and when you forget the PC.
+
 ## Design Decisions
 
 - **Flat NDJSON, not a nested tree.** Memory stays flat on both ends at 200k+ files; the phone derives the tree from `parent`.

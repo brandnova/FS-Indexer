@@ -42,4 +42,5 @@ export interface PingResponse {
   indexed_at: number;
   file_count: number;
   scanning: boolean;
+  file_access?: boolean; // whether the PC lets phones open files (absent on older agents)
 }

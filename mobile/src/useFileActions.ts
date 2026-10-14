@@ -1,0 +1,157 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ApiError, ping, toApiError } from './api/client';
+import type { FileRow } from './db/queries';
+import {
+  authHeaders,
+  downloadToCache,
+  fetchTextPreview,
+  fileUrl,
+  openFile,
+  previewKind,
+  shareFile,
+  type FileDownload,
+} from './files';
+import { loadPairing } from './pairing';
+import type { PairingInfo } from './types';
+
+export type FileAccess = 'none' | 'checking' | 'ready' | 'off' | 'old' | 'demo' | 'error';
+
+export interface FileActions {
+  access: FileAccess;
+  notice: string | null; // why files can't be opened right now
+  error: string | null; // what went wrong with the last action
+  image: { uri: string; headers: Record<string, string> } | null;
+  text: string | null;
+  busy: 'open' | 'share' | null;
+  progress: number | null; // 0..1 while copying
+  open: () => void;
+  share: () => void;
+}
+
+/**
+ * Everything the details sheet needs to open a file: does the PC allow it, a preview,
+ * and the Open and Share actions. Closing the sheet (or picking another file) cancels a copy in progress.
+ */
+export function useFileActions(row: FileRow | null): FileActions {
+  const [access, setAccess] = useState<FileAccess>('none');
+  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [image, setImage] = useState<FileActions['image']>(null);
+  const [text, setText] = useState<string | null>(null);
+  const [busy, setBusy] = useState<'open' | 'share' | null>(null);
+  const [progress, setProgress] = useState<number | null>(null);
+  const pairing = useRef<PairingInfo | null>(null);
+  const download = useRef<FileDownload | null>(null);
+
+  const path = row?.path ?? null;
+  const mtime = row?.mtime ?? 0;
+  const isDir = row?.isDir ?? false;
+
+  useEffect(() => {
+    setAccess('none');
+    setNotice(null);
+    setError(null);
+    setImage(null);
+    setText(null);
+    setBusy(null);
+    setProgress(null);
+    if (!row || isDir) return undefined;
+
+    const file: FileRow = row;
+    let stale = false;
+
+    void (async () => {
+      const p = await loadPairing();
+      if (stale) return;
+      pairing.current = p;
+
+      if (!p) {
+        setAccess('error');
+        setNotice('This phone is not paired with a PC.');
+        return;
+      }
+      if (p.demo) {
+        setAccess('demo');
+        setNotice("Opening files isn't available in the demo, because there is no PC.");
+        return;
+      }
+
+      setAccess('checking');
+      try {
+        const info = await ping(p);
+        if (stale) return;
+        if (info.file_access === undefined) {
+          setAccess('old');
+          setNotice("The agent on your PC is older than this app and can't send files. Update the agent to open files.");
+          return;
+        }
+        if (!info.file_access) {
+          setAccess('off');
+          setNotice('Opening files is switched off on your PC. To turn it on, open the agent\'s dashboard, go to Settings and switch on "Let my phone open and download files".');
+          return;
+        }
+        setAccess('ready');
+      } catch (e) {
+        if (stale) return;
+        setAccess('error');
+        setNotice(toApiError(e).message);
+        return;
+      }
+
+      const kind = previewKind(file);
+      if (kind === 'image') setImage({ uri: fileUrl(p, file), headers: authHeaders(p) });
+      if (kind === 'text') {
+        try {
+          const preview = await fetchTextPreview(p, file);
+          if (!stale) setText(preview);
+        } catch {
+          // a preview is optional
+        }
+      }
+    })();
+
+    return () => {
+      stale = true;
+      download.current?.cancel();
+    };
+    // The effect depends on which file (and which version of it) is showing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path, mtime, isDir]);
+
+  const run = useCallback(
+    async (what: 'open' | 'share') => {
+      const p = pairing.current;
+      if (!p || !row || download.current) return;
+
+      setBusy(what);
+      setProgress(0);
+      setError(null);
+      const d = downloadToCache(p, row, setProgress);
+      download.current = d;
+      try {
+        const uri = await d.promise;
+        if (what === 'open') await openFile(uri, row);
+        else await shareFile(uri, row);
+      } catch (e) {
+        if (!d.cancelled()) setError(e instanceof ApiError ? e.message : "Couldn't open this file.");
+      } finally {
+        download.current = null;
+        setBusy(null);
+        setProgress(null);
+      }
+    },
+    [row],
+  );
+
+  return {
+    access,
+    notice,
+    error,
+    image,
+    text,
+    busy,
+    progress,
+    open: () => void run('open'),
+    share: () => void run('share'),
+  };
+}

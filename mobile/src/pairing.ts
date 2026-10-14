@@ -4,6 +4,7 @@ import { clearIndex } from './db';
 import { findDevice, type DiscoveredDevice } from './discovery';
 import { deviceName } from './platform/deviceName';
 import type { Candidate, PairingInfo, PairingOffer, PingResponse } from './types';
+import { clearOpenedFiles } from './files';
 
 // The key lives in the OS keystore (Keychain / Keystore), not plain storage.
 const KEY = 'pairing';
@@ -59,6 +60,7 @@ export async function pairWith(offer: PairingOffer): Promise<PairingInfo> {
 export async function unpair(): Promise<void> {
   await SecureStore.deleteItemAsync(KEY);
   await clearIndex();
+  await clearOpenedFiles(); // files copied for opening are removed with the pairing
 }
 
 /**

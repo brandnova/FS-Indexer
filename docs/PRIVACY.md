@@ -32,6 +32,7 @@ FS Indexer does not collect your data. There are no accounts, no analytics, no a
 - It uses local-network access only to talk to your own PC.
 - It stores your pinned folders and app settings on the phone. Copying a file's path puts that text on your clipboard only when you tap Copy.
 - It remembers where your PC's folders are located, so it can show and copy full paths.
+- A file you open on your phone is copied into the app's temporary storage first. The app deletes these copies after a day, and when you forget the PC. They are never uploaded anywhere.
 
 ## What we collect and share
 

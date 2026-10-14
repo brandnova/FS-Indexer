@@ -120,7 +120,7 @@ Must be finished before any feature that serves file contents.
 ### Milestone 6: Files
 - [x] `GET /api/v1/download` with path-traversal hardening and range requests (M)
 - [x] "Trusted networks only" banners (S)
-- [ ] Open, preview and share files from the phone (M)
+- [x] Open, preview and share files from the phone (M)
 - [ ] Upload from phone into a single configured drop folder on the PC (M, needs Milestone 5)
 
 ## Milestone 7: Brand and monetization
@@ -170,6 +170,7 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - [ ] Remote access through a hosted relay (long term; it would need a subscription to cover server costs, and it changes the "nothing leaves your network" promise)
 - [ ] Include the "Check my setup" results in the problem report (S)
 - [ ] Encrypt the phone-to-PC connection (a key exchange from the pairing code, then authenticated encryption of requests and the file list) (L)
+- [ ] Save a file straight into a chosen folder on the phone (Android: the folder picker, with large-file safe streaming) (M)
 
 ## Changelog
 
@@ -192,3 +193,4 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - 2026-10-12: Milestone 4, slice 4: `fsagent -doctor` and the dashboard's "Check my setup" page. Milestone 4 complete.
 - 2026-10-12: Milestone 5, slice 1: per-phone keys, one-time pairing codes, paired-phones list.
 - 2026-10-13: Milestone 6, slice 1: the agent can send files (off by default), trusted-network banners.
+- 2026-10-13: Milestone 6, slice 2: open, preview and share files in the app.
