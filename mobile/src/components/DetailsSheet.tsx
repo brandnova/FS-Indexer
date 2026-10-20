@@ -1,26 +1,35 @@
-import { Copy, Download, ExternalLink, FolderOpen, Share2 } from 'lucide-react-native';
+import { Copy, Download, ExternalLink, Share2 } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import { Image, Platform, View } from 'react-native';
 import type { FileRow } from '../db/queries';
+import { useDownloadFor } from '../downloadQueue';
+import { saveLocation } from '../downloads';
 import { formatDateTime, formatSize } from '../format';
 import { Button, Sheet, Text, radius, useTheme } from '../ui';
 import { useFileActions } from '../useFileActions';
+import Bar from './Bar';
 
 interface Props {
   row: FileRow | null; // null = closed
   pcPath: string | null; // null = unknown (older agent, or not fetched yet)
   onCopy: (label: string, text: string) => void;
+  onDownload: (row: FileRow) => void; // adds the file to the download queue and closes the sheet
+  onShowDownloads: () => void;
   onClose: () => void;
 }
 
-export default function DetailsSheet({ row, pcPath, onCopy, onClose }: Props) {
+export default function DetailsSheet({ row, pcPath, onCopy, onDownload, onShowDownloads, onClose }: Props) {
   const { colors } = useTheme();
   const files = useFileActions(row);
+  const dl = useDownloadFor(row);
   const [failedImage, setFailedImage] = useState<string | null>(null);
 
   const isFile = row !== null && !row.isDir;
   const canUse = isFile && files.access === 'ready';
   const working = files.busy !== null;
+  const inQueue = dl !== null && (dl.status === 'queued' || dl.status === 'downloading' || dl.status === 'saving');
+
+  const downloadTitle = inQueue ? 'In downloads · view' : dl?.status === 'done' ? 'Download again' : 'Download';
 
   return (
     <Sheet
@@ -33,11 +42,9 @@ export default function DetailsSheet({ row, pcPath, onCopy, onClose }: Props) {
             {canUse ? (
               <>
                 <Button
-                  title={files.busy === 'download' ? 'Saving...' : 'Download'}
+                  title={downloadTitle}
                   icon={Download}
-                  loading={files.busy === 'download'}
-                  disabled={working && files.busy !== 'download'}
-                  onPress={files.download}
+                  onPress={() => (inQueue ? onShowDownloads() : onDownload(row))}
                 />
                 <Button
                   title={files.busy === 'open' ? 'Opening...' : 'Open'}
@@ -108,38 +115,39 @@ export default function DetailsSheet({ row, pcPath, onCopy, onClose }: Props) {
             </View>
           ) : null}
 
-          {canUse && !files.busy && !files.saved ? (
-            <View style={{ gap: 4 }}>
-              <Text variant="caption" tone="muted">
-                <Text variant="caption" style={{ fontWeight: '700' }}>Download</Text> keeps a copy on your phone
-                {files.saveFolder ? `: ${files.saveFolder}.` : ': you choose the folder once.'}{' '}
-                <Text variant="caption" style={{ fontWeight: '700' }}>Open</Text> uses a temporary copy that the app deletes after a day.
+          {canUse && dl ? (
+            <View style={{ padding: 12, borderRadius: radius.md, backgroundColor: colors.primarySoft, gap: 6 }}>
+              <Text variant="bodyStrong">
+                {dl.status === 'done'
+                  ? `Saved to ${dl.where}`
+                  : dl.status === 'failed'
+                    ? 'The download failed'
+                    : dl.status === 'cancelled'
+                      ? 'The download was cancelled'
+                      : dl.status === 'queued'
+                        ? 'Waiting in your downloads'
+                        : `Downloading... ${Math.round(dl.progress * 100)}%`}
               </Text>
-              {Platform.OS === 'android' && files.saveFolder ? (
-                <Button title="Change download folder" variant="ghost" size="sm" onPress={files.changeFolder} />
-              ) : null}
+              {dl.status === 'downloading' ? <Bar value={dl.progress} /> : null}
+              {dl.status === 'failed' && dl.error ? <Text tone="danger">{dl.error}</Text> : null}
+            </View>
+          ) : null}
+
+          {canUse && !files.busy && !dl ? (
+            <View style={{ gap: 2 }}>
+              <Text variant="caption" tone="muted">
+                Download saves a copy in {saveLocation()}. You can queue several files.
+              </Text>
+              <Text variant="caption" tone="muted">
+                Open uses a temporary copy that the app deletes after a day.
+              </Text>
             </View>
           ) : null}
 
           {files.busy ? (
             <Text tone="muted" accessibilityLiveRegion="polite">
-              {files.busy === 'download'
-                ? `Copying to your phone, then saving to ${files.saveFolder ?? 'the folder you choose'}... ${Math.round((files.progress ?? 0) * 100)}%`
-                : `Copying to a temporary folder in this app... ${Math.round((files.progress ?? 0) * 100)}%`}
+              Copying to a temporary folder in this app... {Math.round((files.progress ?? 0) * 100)}%
             </Text>
-          ) : null}
-
-          {files.saved ? (
-            <View style={{ padding: 12, borderRadius: radius.md, backgroundColor: colors.primarySoft, gap: 8 }}>
-              <Text variant="bodyStrong">Saved on your phone</Text>
-              <Text selectable>
-                {files.saved.where} › {files.saved.fileName}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                <Button title="Open" icon={ExternalLink} variant="tonal" size="sm" onPress={files.saved.open} />
-                <Button title="Show folder" icon={FolderOpen} variant="tonal" size="sm" onPress={files.saved.show} />
-              </View>
-            </View>
           ) : null}
 
           {files.openedTemp && !files.busy ? (

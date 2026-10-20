@@ -356,6 +356,8 @@ func (ui *WebUI) handleIndex(rw http.ResponseWriter, r *http.Request) {
 		"Name":     displayName,
 		"Version":  versionLabel(),
 		"BrandURL": brandURL,
+		"SupportEmail": supportEmail,
+		"IssuesURL":    issuesURL,
 	})
 }
 

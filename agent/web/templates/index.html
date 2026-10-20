@@ -78,6 +78,7 @@
 
     <div class="main-col">
       <header class="topbar">
+        <button class="icon-btn menu-btn" type="button" data-action="open-drawer" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar"><svg class="icon" aria-hidden="true"><use href="#i-menu"></use></svg></button>
         <div class="titles">
           <h1 id="page-title">Home</h1>
           <p class="muted small" id="page-sub"></p>
@@ -485,6 +486,18 @@
       <p class="muted">This is what you can send with your report. It has the version, your system, your settings and the latest log lines. Your access keys and your user name in paths are removed. Read it before you share it.</p>
       <label class="check"><input type="checkbox" id="report-mask" checked> Hide the last two parts of IP addresses</label>
       <textarea class="report-text" id="report-text" readonly aria-label="The report"></textarea>
+      <div class="callout info">
+        <svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg>
+        <div>
+          <strong>How to send it</strong>
+          <p>Copy or download the report, then email it to <strong>{{.SupportEmail}}</strong> or paste it into a GitHub issue. Nothing is sent automatically. <br> <span class="callout-subtext">Add a short description of the specific issue you encounter to help us understand how to assist you.</span></p>
+          <div class="btn-row">
+            <button class="btn tonal sm" type="button" data-action="copy-email" data-email="{{.SupportEmail}}">Copy email address</button>
+            <a class="btn tonal sm" href="mailto:{{.SupportEmail}}?subject=Problem%20report">Open email</a>
+            <a class="btn tonal sm" href="{{.IssuesURL}}/new" target="_blank" rel="noopener noreferrer">Open GitHub issue</a>
+          </div>
+        </div>
+      </div>
       <div class="dialog-actions">
         <button class="btn ghost" id="report-download" type="button"><svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>Download</button>
         <button class="btn primary" id="report-copy" type="button"><svg class="icon" aria-hidden="true"><use href="#i-copy"></use></svg>Copy</button>

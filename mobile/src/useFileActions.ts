@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, ping, toApiError } from './api/client';
 import type { FileRow } from './db/queries';
-import { chooseSaveFolder, getSaveFolderLabel, openSaved, saveFile, showFolder, UserCancelled, type SaveResult } from './downloads';
 import {
   authHeaders,
   downloadToCache,
@@ -16,14 +15,7 @@ import { loadPairing } from './pairing';
 import type { PairingInfo } from './types';
 
 export type FileAccess = 'none' | 'checking' | 'ready' | 'off' | 'old' | 'demo' | 'error';
-export type FileJob = 'open' | 'share' | 'download';
-
-export interface SavedInfo {
-  where: string;
-  fileName: string;
-  open: () => void;
-  show: () => void;
-}
+export type FileJob = 'open' | 'share';
 
 export interface FileActions {
   access: FileAccess;
@@ -33,18 +25,14 @@ export interface FileActions {
   text: string | null;
   busy: FileJob | null;
   progress: number | null; // 0..1 while copying
-  saved: SavedInfo | null; // set after a download
   openedTemp: boolean; // the last Open used a temporary copy
-  saveFolder: string | null; // where downloads go (null until chosen on Android)
   open: () => void;
   share: () => void;
-  download: () => void;
-  changeFolder: () => void;
 }
 
 /**
- * Everything the details sheet needs to work with a file: does the PC allow it, a preview, and the
- * Open, Share and Download actions. Closing the sheet (or picking another file) cancels a copy in progress.
+ * What the details sheet needs for one file: does the PC allow it, a preview, and Open and Share.
+ * (Downloading has its own queue: see downloadQueue.ts.) Closing the sheet cancels a copy in progress.
  */
 export function useFileActions(row: FileRow | null): FileActions {
   const [access, setAccess] = useState<FileAccess>('none');
@@ -54,11 +42,9 @@ export function useFileActions(row: FileRow | null): FileActions {
   const [text, setText] = useState<string | null>(null);
   const [busy, setBusy] = useState<FileJob | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
-  const [saved, setSaved] = useState<SaveResult | null>(null);
   const [openedTemp, setOpenedTemp] = useState(false);
-  const [saveFolder, setSaveFolder] = useState<string | null>(null);
   const pairing = useRef<PairingInfo | null>(null);
-  const download = useRef<FileDownload | null>(null);
+  const copy = useRef<FileDownload | null>(null);
 
   const path = row?.path ?? null;
   const mtime = row?.mtime ?? 0;
@@ -72,16 +58,11 @@ export function useFileActions(row: FileRow | null): FileActions {
     setText(null);
     setBusy(null);
     setProgress(null);
-    setSaved(null);
     setOpenedTemp(false);
     if (!row || isDir) return undefined;
 
     const file: FileRow = row;
     let stale = false;
-
-    void getSaveFolderLabel().then((label) => {
-      if (!stale) setSaveFolder(label);
-    });
 
     void (async () => {
       const p = await loadPairing();
@@ -135,7 +116,7 @@ export function useFileActions(row: FileRow | null): FileActions {
 
     return () => {
       stale = true;
-      download.current?.cancel();
+      copy.current?.cancel();
     };
     // The effect depends on which file (and which version of it) is showing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -144,50 +125,31 @@ export function useFileActions(row: FileRow | null): FileActions {
   const run = useCallback(
     async (job: FileJob) => {
       const p = pairing.current;
-      if (!p || !row || download.current) return;
+      if (!p || !row || copy.current) return;
 
       setBusy(job);
       setProgress(0);
       setError(null);
-      if (job === 'download') setSaved(null);
       const d = downloadToCache(p, row, setProgress);
-      download.current = d;
+      copy.current = d;
       try {
         const uri = await d.promise;
         if (job === 'open') {
           await openFile(uri, row);
           setOpenedTemp(true);
-        } else if (job === 'share') {
-          await shareFile(uri, row);
         } else {
-          setProgress(1);
-          const result = await saveFile(uri, row.name);
-          setSaved(result);
-          setSaveFolder(result.where);
+          await shareFile(uri, row);
         }
       } catch (e) {
-        if (e instanceof UserCancelled) {
-          // the person closed the folder picker: nothing to report
-        } else if (!d.cancelled()) {
-          setError(e instanceof ApiError ? e.message : "Couldn't finish that.");
-        }
+        if (!d.cancelled()) setError(e instanceof ApiError ? e.message : "Couldn't finish that.");
       } finally {
-        download.current = null;
+        copy.current = null;
         setBusy(null);
         setProgress(null);
       }
     },
     [row],
   );
-
-  const changeFolder = useCallback(async () => {
-    try {
-      const label = await chooseSaveFolder();
-      if (label) setSaveFolder(label);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Couldn't open the folder picker.");
-    }
-  }, []);
 
   return {
     access,
@@ -197,19 +159,8 @@ export function useFileActions(row: FileRow | null): FileActions {
     text,
     busy,
     progress,
-    saved: saved
-      ? {
-          where: saved.where,
-          fileName: saved.fileName,
-          open: () => void openSaved(saved).catch((e) => setError(e instanceof ApiError ? e.message : "Couldn't open the saved file.")),
-          show: () => void showFolder(saved).catch(() => setError(`Open your Files app and look in: ${saved.where}`)),
-        }
-      : null,
     openedTemp,
-    saveFolder,
     open: () => void run('open'),
     share: () => void run('share'),
-    download: () => void run('download'),
-    changeFolder: () => void changeFolder(),
   };
 }

@@ -1,61 +1,71 @@
-# Privacy Policy
+# Privacy policy
 
-**App:** FS Indexer (the mobile app) and FS Indexer Agent (the PC program)
-**Effective date:** 05-10-2026
-**Contact:** brandnova.dev@gmail.com
-**Source code:** [Repo URL](https://github.com/brandnova/FS-Indexer.git)
+**FS Indexer** (the agent for your computer, and the app for your phone)
+Last updated: 20 October 2026
 
 ## The short version
 
-FS Indexer does not collect your data. There are no accounts, no analytics, no advertising, and no servers run by the developer. Everything stays on your own devices and your own network.
+**We don't collect your data.** FS Indexer has no accounts, no ads and no analytics, and nothing is sent to us. Your file list and your files stay on your own PC and phone. The only traffic is between your two devices, over your own network.
 
-## What the software does with your data
+## Who is responsible
 
-**On your PC (the agent):**
+FS Indexer is published by **Brand Nova** ([brandnova.pythonanywhere.com](https://brandnova.pythonanywhere.com)). Contact: **brandnova.dev@gmail.com**, or open an issue at [github.com/brandnova/FS-Indexer/issues](https://github.com/brandnova/FS-Indexer/issues).
 
-- It reads the folders listed in its `config.json` (by default, your standard folders such as Documents and Downloads)..
-- It builds a list of file names, paths, sizes and modification times, which it keeps in memory.
-- It shares that list only with phones that present your access token, over your local network.
-- It stores its settings (including the access token) in a local configuration file on your PC.
-- It does not read or upload the contents of your files.
-- It also tells paired phones where each chosen folder is on your PC (for example `/home/you/Documents`), so the app can show full file paths.
-- It keeps a log (`agent.log`, next to its settings file) of what it does, such as scans, folder changes, and when a phone on your network updated its file list or used a wrong token. The log stays on your computer and never contains the access token. A problem report is only created when you ask for it, and nothing is sent anywhere automatically.
-- If you turn on "start on login", the agent adds one entry to your account so it can start by itself: a value under the Run key in the Windows registry, a login item file in `~/Library/LaunchAgents` on macOS, or a file in `~/.config/autostart` on Linux. Turning the setting off removes that entry. Nothing is installed for other users of the computer.
-- The agent keeps a list of the phones you paired (`devices.json`): the name each phone gave itself, when it was paired and last seen, and its address on your network, plus a hash of its key. Remove a phone in the dashboard and its entry is deleted.
-- With "Let my phone open and download files" switched on, the contents of the files you open on your phone are sent from your PC to that phone over your network. Nothing goes anywhere else, and the agent logs which file was opened and by which phone (in the log on your PC).
-- With "Receive files from my phone" switched on, files you choose on your phone are sent to your PC and saved in the drop folder you picked. The app's temporary copy of each chosen file is deleted when its upload ends. The agent logs the name of each file received and which phone sent it.
+## What the agent (on your PC) uses
 
-**On your phone (the app):**
+- **Your file list.** The agent reads the names, sizes and dates of the files in the folders you choose. It keeps this list in memory only.
+- **Settings and paired phones**, stored on your PC: your chosen folders and options, and for each paired phone its name, when it was paired and last seen, its address on your network, and a hash of its key (never the key itself).
+- **A log** (`agent.log`) of what the agent did: scans, folder changes, which phone connected, and which files were opened or received. It stays on your PC, never contains keys or pairing codes, and rotates automatically.
+- **Files you choose to let phones open**, and files phones send to your drop folder. Both are off until you turn them on.
 
-- It stores the PC's address and access token in the phone's secure storage (Android Keystore / iOS Keychain).
-- It stores a copy of the file list (names, paths, sizes, dates) in a local database on the phone, so you can browse and search offline.
-- It uses the camera only to scan the pairing QR code. Images are not saved or sent anywhere.
-- It uses local-network access only to talk to your own PC.
-- It stores your pinned folders and app settings on the phone. Copying a file's path puts that text on your clipboard only when you tap Copy.
-- It remembers where your PC's folders are located, so it can show and copy full paths.
-- A file you open on your phone is copied into the app's temporary storage first. The app deletes these copies after a day, and when you forget the PC. They are never uploaded anywhere.
+All of this stays on your PC. You can see it all in the dashboard, and delete it by removing the settings folder.
 
-## What we collect and share
+## What the app (on your phone) stores
 
-Nothing. The developer receives no data from the app or the agent. Nothing is sent to third parties, and the software contains no analytics or advertising.
+- The **pairing**: your PC's name and address, and this phone's key (in the phone's secure storage).
+- **A copy of your file list** (names, folder paths, sizes, dates), so you can search offline.
+- Your **pins and settings** (theme, update options).
+- **Temporary copies** of files you open or send. They are deleted when the transfer ends, or after a day.
+- A **downloads list**: names of files you downloaded, kept for 30 days.
+- **Files you download**, in your phone's Downloads folder. They are yours: the app never deletes them.
 
-## Network security
+All of this stays on your phone. **Unpair this PC** deletes the pairing, the file list, your pins and the downloads list.
 
-In the current version, the connection between the app and the agent uses plain HTTP on your local network, protected by a shared access token. Only use the software on networks you trust. See `SECURITY.md` for details.
+## What leaves your devices
 
-## Deleting your data
+- Between your phone and your PC, over **your own network**: the file list, your phone's name, and, if you allow it, files you open or send. This traffic is **not encrypted yet**, so use a network you trust.
+- **Nothing is sent to us or to any third party.** There are no tracking tools, no advertising IDs and no crash-reporting services in the project.
+- If you press **Report a problem**, a text report is built on your PC. It stays on your screen until **you** copy, download or send it. It removes your keys and your user name.
 
-- **Phone:** tap **Unpair** in the app to delete the saved token and the local file list, or uninstall the app.
-- **PC:** delete the agent's configuration file and uninstall the program.
+## Permissions the app asks for
+
+- **Camera**: only to scan the pairing QR code. Nothing is recorded or saved.
+- **Local network and internet access**: to talk to your PC. (Android calls this the "internet" permission; it is used only for your local network.)
+- **Storage (Android 9 and older only)**: to save downloads to the Downloads folder.
+
+## Third parties
+
+None receive your data. Google Play and the App Store may collect their own diagnostic information when you install the app, under their own policies.
 
 ## Children
 
-The software is not directed at children and does not knowingly collect any data from anyone.
+The app doesn't knowingly collect anything from anyone, children included.
 
-## Changes to this policy
+## Your choices and deleting your data
 
-If this policy changes, the updated version will be published at this location with a new effective date.
+- Remove a phone: dashboard, **Phones → Remove**.
+- Turn off opening or receiving files: dashboard, **Settings**.
+- Delete the app's data: **Settings → Unpair this PC**, or uninstall the app.
+- Delete the agent's data: delete its settings folder (see [Getting started](GETTING_STARTED.md)).
+
+## Open source
+
+The code is public at [github.com/brandnova/FS-Indexer](https://github.com/brandnova/FS-Indexer), so you can check any of this.
+
+## Changes
+
+If this policy changes, the new version will be published here with a new date, and significant changes will be announced in the release notes.
 
 ## Contact
 
-Questions about privacy: brandnova.dev@gmail.com
+**brandnova.dev@gmail.com** · [GitHub issues](https://github.com/brandnova/FS-Indexer/issues)

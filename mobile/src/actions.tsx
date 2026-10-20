@@ -1,9 +1,12 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { copyText } from './clipboard';
 import DetailsSheet from './components/DetailsSheet';
+import DownloadsBar from './components/DownloadsBar';
+import DownloadsSheet from './components/DownloadsSheet';
 import FilterSheet from './components/FilterSheet';
 import UploadSheet from './components/UploadSheet';
 import { isPinned, setPinned, type FileRow, type FilterSpec } from './db/queries';
+import { enqueueDownload } from './downloadQueue';
 import { DEFAULT_FILTERS, toSpec, type FilterState } from './filters';
 import { useToast } from './hooks';
 import { fullPcPath } from './pcPaths';
@@ -19,6 +22,8 @@ interface Actions {
   setFilters: (filters: FilterState) => void;
   openFilters: () => void;
   openUpload: () => void;
+  download: (row: FileRow) => void; // adds a file to the download queue
+  openDownloads: () => void;
 }
 
 const ActionsContext = createContext<Actions | null>(null);
@@ -34,6 +39,7 @@ export function ActionsProvider({ bump, children }: { bump: () => void; children
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [downloadsOpen, setDownloadsOpen] = useState(false);
   const [details, setDetails] = useState<{ row: FileRow; pcPath: string | null } | null>(null);
   const spec = useMemo(() => toSpec(filters), [filters]);
 
@@ -79,6 +85,27 @@ export function ActionsProvider({ bump, children }: { bump: () => void; children
     [copy],
   );
 
+  const download = useCallback(
+    (row: FileRow) => {
+      const result = enqueueDownload(row);
+      notify(result === 'added' ? `Added to downloads: ${row.name}` : `Already in your downloads: ${row.name}`);
+    },
+    [notify],
+  );
+
+  const onDownloadFromSheet = useCallback(
+    (row: FileRow) => {
+      setDetails(null);
+      download(row);
+    },
+    [download],
+  );
+
+  const onShowDownloadsFromSheet = useCallback(() => {
+    setDetails(null);
+    setDownloadsOpen(true);
+  }, []);
+
   const value = useMemo<Actions>(
     () => ({
       showDetails,
@@ -90,20 +117,26 @@ export function ActionsProvider({ bump, children }: { bump: () => void; children
       setFilters,
       openFilters: () => setFiltersOpen(true),
       openUpload: () => setUploadOpen(true),
+      download,
+      openDownloads: () => setDownloadsOpen(true),
     }),
-    [showDetails, togglePin, copyFolderPath, notify, filters, spec],
+    [showDetails, togglePin, copyFolderPath, notify, filters, spec, download],
   );
 
   return (
     <ActionsContext.Provider value={value}>
       {children}
+      <DownloadsBar onPress={() => setDownloadsOpen(true)} />
       <Toast message={toast} />
       <FilterSheet visible={filtersOpen} value={filters} onChange={setFilters} onClose={() => setFiltersOpen(false)} />
       <UploadSheet visible={uploadOpen} onClose={() => setUploadOpen(false)} />
+      <DownloadsSheet visible={downloadsOpen} onClose={() => setDownloadsOpen(false)} />
       <DetailsSheet
         row={details?.row ?? null}
         pcPath={details?.pcPath ?? null}
         onCopy={onCopyFromSheet}
+        onDownload={onDownloadFromSheet}
+        onShowDownloads={onShowDownloadsFromSheet}
         onClose={() => setDetails(null)}
       />
     </ActionsContext.Provider>

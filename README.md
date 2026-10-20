@@ -1,233 +1,94 @@
-# Local FS Indexer & Remote Browser
+# FS Indexer
 
-A lightweight, offline-first file system indexer and mobile browser. A background agent on your PC crawls selected folders, builds an index of file metadata, and serves it over your local Wi-Fi. A mobile app syncs that index into a local SQLite database, so you can browse and search your PC's files from your phone, including when you're away from home.
+**Search and browse your computer's files from your phone, even when the computer is asleep.**
 
-## Screenshots
+A small **agent** on your PC makes a list of the folders you choose. The **app** copies that list to your phone, so you can search it instantly, anywhere you are. Your files stay on your PC unless you decide to open or download them.
 
-<p align="center">
-  <img src="docs/images/home-light.png" width="200" alt="Home screen with the update status, folders and recent files">
-  <img src="docs/images/files.png" width="200" alt="Browsing a folder">
-  <img src="docs/images/search.png" width="200" alt="Search results">
-  <img src="docs/images/details.png" width="200" alt="File details with the full path on your PC">
-</p>
+> **Working name.** The project is called FS Indexer until its final name is chosen.
 
-<p align="center">
-  <img src="docs/images/filters.png" width="200" alt="Sort and filter options">
-  <img src="docs/images/home-dark.png" width="200" alt="The dark theme">
-  <img src="docs/images/pairing.png" width="200" alt="Pairing screen">
-  <img src="docs/images/about-agent.png" width="200" alt="The About the agent screen">
-</p>
+## What it does
 
-<p align="center">
-  <img src="docs/images/agent.png" width="620" alt="The agent's startup screen with the pairing QR code">
-</p>
-
-> **Away from home:** syncing needs both devices on the same network. Away from home, you browse and search the **last synced snapshot**. The app shows a "last synced" timestamp so you can tell how fresh the data is.
-
-## Tech Stack
-
-| Component | Technology | Why |
-| --- | --- | --- |
-| PC Agent | Go | Fast `filepath.WalkDir` crawling, tiny memory footprint, single binary |
-| Mobile App | React Native (Expo, TypeScript) | Cross-platform, fast UI iteration |
-| Mobile DB | SQLite (`expo-sqlite`) | Sub-millisecond offline search over 100k+ paths |
-| Discovery (stretch) | mDNS / Zeroconf | Auto-discover the PC on Wi-Fi |
+- **Find any file by name or folder** from your phone. Once synced, search works offline.
+- **You choose what is shared.** Passwords, keys and `.env` files are always skipped, and hidden files are off by default.
+- **Optional, and off by default:** open or download files from your PC to your phone, and send files from your phone into one drop folder on your PC.
+- **Pair with a QR code.** Every phone gets its own key, and you can remove a phone at any time.
+- **A friendly dashboard** on the PC for folders, phones, settings and troubleshooting.
+- **Free and open source (MIT).** No accounts, no ads, no analytics. Nothing is sent to us or to the cloud.
 
 ## How it works
 
-1. The agent reads `config.json`, crawls the configured roots (skipping ignored folders), and keeps a **flat in-memory snapshot** of entries.
-2. The phone pairs with the agent (manual IP:port + token, or a QR code printed in the agent's terminal).
-3. The phone streams `GET /api/v1/index` (NDJSON) and upserts each line into SQLite in batched transactions. Rows that were not seen during the sync are deleted, so files removed on the PC disappear from the phone.
-4. The phone builds the folder view from each row's `parent` column and runs search locally.
-
-See [`docs/API.md`](docs/API.md) for the full API contract.
-
-## MVP Features
-
-### PC Agent
-- Configurable roots via `config.json` (each root gets a label used as the path prefix)
-- Metadata crawl: path, parent, name, extension, size, mtime, is_dir
-- Default ignores: `node_modules`, `.git`, `__pycache__`, `.venv`, `venv`, `$RECYCLE.BIN`, `System Volume Information` and others, plus your own `extra_ignores`
-- Symlinks are not followed
-- REST API: `GET /api/v1/ping`, `GET /api/v1/index` (streamed NDJSON), `POST /api/v1/reindex`
-- Bearer token auth (auto-generated on first run)
-- Terminal output of the agent's address and a pairing QR code
-
-### Mobile App
-- Pairing screen (manual IP:port + token, or QR scan)
-- Sync engine: streamed NDJSON, batched inserts, stale-row cleanup, progress and last-synced display
-- Folder browser with breadcrumbs
-- Offline substring search (tokenized, case-insensitive)
-- Runs on Android and iOS; OS-specific code is isolated in `src/platform/`
-
-### Connecting your phone
-
-Start the agent. It shows a QR code and a pairing code. In the app, tap **Scan QR code** and point the camera at it, or choose **Enter details manually** and type the address and the code. The code works once and runs out after ten minutes; the dashboard (**Connect a phone**) and `fsagent -pair` make a new one. Every phone gets its own key, so you can remove a single phone under **Paired phones** in the dashboard.
-
-### Opening files from your phone
-
-By default your phone only sees file names. To open, preview and save files, turn on **Let my phone open and download files** under Settings in the dashboard. The agent then sends a file only if it is in the list: not skipped by a rule, not in a folder you switched off, and not a link. Files travel without encryption, so use this only on a trusted network or a direct hotspot link between your phone and your PC.
-
-In the app, tap a file and choose **Open** (it is copied to your phone and opened with the app you'd normally use for it) or **Share** (the share sheet, which also lets you save it to Files or Drive). Images and text files show a preview. Copies are kept only in the app's temporary storage: they are deleted after a day, and when you forget the PC.
-
-### Sending files from your phone to your PC
-
-Turn on **Receive files from my phone** under Settings in the dashboard, choose a drop folder (the picker has a **New folder** button), and set the largest file and how many files per hour you accept. In the app, tap **Send files to your PC** on the Home screen and choose files. They arrive in the drop folder; an existing file is never overwritten, and program files (.exe, .sh ...) are refused unless you allow them. Files travel without encryption, so use this only on a trusted network or a direct hotspot link.
-
-## Design Decisions
-
-- **Flat NDJSON, not a nested tree.** Memory stays flat on both ends at 200k+ files; the phone derives the tree from `parent`.
-- **Root labels.** Every path starts with its root's label (`Documents/cv/resume.pdf`). Always forward slashes, so Windows and Linux agents look identical to the phone.
-- **Folders are entries** (`is_dir: true`), so empty folders show up.
-- **Bearer token from day one.** Anyone on the same Wi-Fi could otherwise read your file list.
-- **Manual pairing first, mDNS last.** mDNS needs native modules and platform permissions, so it must not block the MVP.
-- **Substring search for now.** Real fuzzy matching (FTS5 trigram or scoring) comes after the MVP.
-- **No file watcher yet.** The agent rescans on startup and on `POST /api/v1/reindex`.
-
-## Project Structure
-
-```
-fs-indexer/
-├── README.md
-├── docs/API.md
-├── agent/          # Go daemon
-└── mobile/         # Expo app
+```text
+   Your PC                                          Your phone
+ ┌───────────────────┐    your own network     ┌─────────────────┐
+ │  agent            │ ◄─────────────────────► │  app            │
+ │  lists the folders│   the file list, and    │  search, browse │
+ │  you choose       │   files only if allowed │  open, download │
+ └───────────────────┘                         └─────────────────┘
 ```
 
-## Quick Start
+The agent only talks to devices on your local network. The app keeps its own copy of the file list, so searching needs no connection.
 
-### 1. Run the agent (PC)
+## Important: trusted networks only
+
+The connection between your phone and PC is **not encrypted yet**. Use it on a network you trust, such as your home Wi-Fi, or link just the two devices directly with a phone hotspot. Opening and sending files are off until you switch them on. See [the security model](docs/SECURITY_MODEL.md).
+
+## Install
+
+| | Download | Notes |
+| --- | --- | --- |
+| **Windows** | `fsagent_<version>_windows_amd64.zip` | Unzip and double-click `fsagent.exe`. Windows SmartScreen: "More info", then "Run anyway". Allow the firewall prompt on **Private** networks. |
+| **macOS** | `FS-Indexer_<version>_macOS_arm64.app.zip` (Apple silicon) or `_amd64` (Intel) | Unzip, then right-click **FS Indexer**, then Open (it isn't signed yet). |
+| **Linux** | `.deb`, `.rpm` or `.tar.gz` | `sudo dnf install ./fsagent_*.rpm` or `sudo apt install ./fsagent_*.deb`. FS Indexer then appears in your menu. |
+| **Android** | `fs-browser-<version>.apk` | Install it from the release page (allow "install unknown apps" once). A Play Store listing is planned. |
+| **iPhone** | Planned | |
+
+Everything is on the [releases page](https://github.com/brandnova/FS-Indexer/releases). Check any download against `checksums.txt`. Use the app and the agent from the same release.
+
+## Quick start
+
+1. **Start the agent** on your PC. The first time, it opens its dashboard in your browser and shows a pairing code.
+2. **Open the app** and tap **Scan QR code**, then point the camera at the code (or choose "Enter details manually" and type the address and code).
+3. **Tap Update** in the app. Your files appear.
+
+More: [Getting started](docs/GETTING_STARTED.md) · [FAQ](docs/FAQ.md).
+
+## Screenshots
+
+| | | |
+| --- | --- | --- |
+| ![Pairing](docs/images/pairing.png) | ![Home](docs/images/home-light.png) | ![Search](docs/images/search.png) |
+| ![Details](docs/images/details.png) | ![Filters](docs/images/filters.png) | ![Dark mode](docs/images/home-dark.png) |
+
+## Documentation
+
+- [Getting started](docs/GETTING_STARTED.md): install, first run, uninstall
+- [FAQ](docs/FAQ.md): common questions and fixes
+- [Security model](docs/SECURITY_MODEL.md) and the [security policy](SECURITY.md)
+- [Privacy policy](docs/PRIVACY.md)
+- [API reference](docs/API.md): for developers
+- [Roadmap](docs/FEATURES.md)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
+
+## Build from source
 
 ```bash
-cd agent
-go run .
+git clone https://github.com/brandnova/FS-Indexer.git
+cd FS-Indexer
+
+# The agent (Go)
+cd agent && go test ./... && go build -o fsagent . && ./fsagent
+
+# The app (Expo / React Native). It needs a development build, not Expo Go.
+cd mobile && npm install && npx expo start
 ```
 
-The first run creates `config.json`. Edit `roots` to choose your folders, then restart. The terminal prints a pairing QR code plus the address and token.
+Repository layout: `agent/` (the Go agent and its dashboard), `mobile/` (the app), `docs/`, `scripts/` (release and packaging helpers), `packaging/` and `branding/`.
 
-### 2. Run the app (phone)
+## Support and security
 
-The app needs a **development build** (Expo Go can't load its native modules). Build one once:
+- **Questions and bugs:** [open an issue](https://github.com/brandnova/FS-Indexer/issues) or email **brandnova.dev@gmail.com**. In the dashboard, **Help -> Report a problem** collects what's needed, with your keys and user name removed. Nothing is sent automatically.
+- **Security problems:** see [SECURITY.md](SECURITY.md). Please don't post them publicly.
 
-```bash
-cd mobile
-npm install
-npx eas-cli@latest build --profile development --platform android
-```
+## License and credits
 
-Install the APK, then start the dev server and open the app:
-
-```bash
-npx expo start
-```
-
-Tap **Scan QR code**, scan the code from the agent's terminal, then tap **Sync now** and **Browse files**.
-
-### Security notes
-
-Traffic is plain HTTP on your local network, protected by a shared token, and the agent refuses non-LAN clients. Don't expose the port to the internet. Anyone who has the token can read your file listing. See `docs/FEATURES.md` for the planned hardening (per-device tokens, TLS).
-
-## Agent Configuration
-
-The agent keeps `config.json` in your OS config folder (`~/.config/fs-indexer/` on Linux, `%AppData%\fs-indexer\` on Windows, `~/Library/Application Support/fs-indexer/` on macOS). It's created on first run, and `-config <path>` overrides the location.
-
-With no `roots` configured, the agent indexes your standard folders that exist (Documents, Downloads, Desktop, Pictures, Music, and Videos or Movies), using the locations your OS reports, and writes them into the file so you can edit them.
-
-```json
-{
-  "device_id": "auto-generated",
-  "device_name": "My PC",
-  "port": 8080,
-  "token": "auto-generated",
-  "roots": [
-    { "path": "~/Documents", "label": "Documents" },
-    { "path": "D:/Projects" }
-  ],
-  "extra_ignores": ["*.tmp", "dist"],
-  "include_hidden": false,
-  "allowed_networks": []
-}
-```
-
-| Setting | Meaning |
-| --- | --- |
-| `roots` | Folders to index. `label` is optional and defaults to the folder name. Use forward slashes on Windows (`D:/Projects`) |
-| `extra_ignores` | Extra file or folder names (wildcards allowed) to skip |
-| `include_hidden` | `false` (default) skips names starting with `.`; set `true` to include them |
-| `allowed_networks` | Extra networks allowed to connect, in CIDR notation, e.g. `["100.64.0.0/10"]` for Tailscale. Very broad ranges are rejected |
-| `web_port` | The dashboard's port (default 8765; it must differ from `port`) |
-| `disable_web_ui` | `true` turns the dashboard off |
-
-## Agent options
-
-Run `fsagent -h` for the full list. The useful ones:
-
-| Option | What it does |
-| --- | --- |
-| `-pair` | Show the pairing QR code and token again, then exit |
-| `-rotate-token` | Create a new access token (phones must pair again), then exit |
-| `-quiet` | Print only warnings and errors: no banner, QR code or token. Good for running as a service |
-| `-no-qr` | Don't draw the QR code; show the address and token only |
-| `-no-color` | Turn off colours (the `NO_COLOR` environment variable works too) |
-| `-verbose` | List every path that couldn't be read while scanning |
-| `-host <address>` | Use this address in the QR code (when the wrong network is detected) |
-| `-no-mdns` | Don't let the app find this computer automatically |
-| `-config <file>` | Use a different settings file |
-| `-dump` | Print the file list as JSON lines and exit (for debugging) |
-| `-version` | Print the version and exit |
-| `-ui` | Open the dashboard in your browser (starts the agent in the background if it isn't running) |
-| `-background` | Run with no window; the dashboard opens in your browser |
-| `-stop` | Stop the agent that is running in the background |
-| `-no-web` | Don't start the dashboard |
-| `-no-open` | Don't open the browser automatically |
-| `-report` | Print a problem report (version, system, settings with the token removed, latest log lines) and exit |
-| `-autostart on\|off\|status` | Start the agent quietly when you sign in (or check whether it does). Also in the dashboard under Settings. |
-| `-doctor` (or `doctor`) | Check your setup (settings, folders, network, ports, firewall, discovery, log) and say what to fix. Exits with 1 if something needs fixing. Also in the dashboard under "Check my setup". |
-
-## The dashboard
-
-When the agent runs, it also serves a small dashboard for the person at the computer: a big QR code for pairing a phone, the folders being shared, and what's happening. It listens on `127.0.0.1` only, so nothing else on your network can reach it.
-
-- **First start:** your browser opens the dashboard by itself.
-- **Later:** run `fsagent -ui` (on Windows, just double-click the agent). If the agent isn't running, it starts in the background.
-- **Stopping a background agent:** the **Quit** button in the dashboard, or `fsagent -stop`.
-- **Log file:** a background agent writes `agent.log` next to its settings file.
-
-## Logs and problem reports
-
-The agent keeps a log of what it does, with a timestamp for every line (`agent.log`, next to the settings file; it rotates at 2 MB and keeps 3 old files). The access token is never written to it. In the dashboard, **Activity & logs** shows it with filters and search, and **Report a problem** builds a report you can copy or download. Your token and your user name in paths are removed from it, and IP addresses are masked by default. From a terminal, `fsagent -report` prints the same report.
-
-### My phone can't connect
-
-Run `fsagent -doctor` (or open **Check my setup** in the dashboard). It tests your settings, folders, network address, ports, firewall (where it can) and automatic discovery, and tells you what to change. If everything passes, it lists the usual causes: a guest Wi-Fi, a VPN, or a firewall.
-
-## Build Phases
-
-| Phase | Scope |
-| --- | --- |
-| 1 | Agent core: config, crawler, snapshot |
-| 2 | Agent API: ping, streaming index, auth, reindex, QR |
-| 3 | Mobile foundation: Expo dev build, SQLite, pairing screen |
-| 4 | Sync engine |
-| 5 | Browse and search |
-| 6 | (Stretch) mDNS discovery |
-| 7 | Smoke test on real directories |
-
-## Features & Roadmap
-
-See [`docs/FEATURES.md`](docs/FEATURES.md) for what's shipped, MVP progress by phase, and the post-MVP checklist.
-
-## License, security and privacy
-
-- License: [MIT](LICENSE)
-- Security policy and known limitations: [SECURITY.md](SECURITY.md)
-- Privacy policy: [docs/PRIVACY.md](docs/PRIVACY.md)
-
-## Launchers and start on login
-
-- **Windows:** double-click `fsagent.exe`. The dashboard opens in your browser.
-- **macOS:** unzip `FS-Indexer_<version>_macOS_<arch>.app.zip` and open **FS Indexer**. (Not signed yet: right-click, then Open, the first time.)
-- **Linux:** install the `.deb` or `.rpm`. **FS Indexer** appears in your applications menu.
-- **Start on login:** turn it on under Settings in the dashboard, or run `fsagent -autostart on`. It starts quietly and never opens a window. Turn it off the same way.
-
-Made by [Brand Nova](https://brandnova.pythonanywhere.com).
+MIT License (see [LICENSE](LICENSE)). Made by [Brand Nova](https://brandnova.pythonanywhere.com). The Brand Nova name and logo are not covered by the MIT licence. Open-source components are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

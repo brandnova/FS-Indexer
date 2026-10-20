@@ -54,7 +54,7 @@ Work top to bottom: each milestone builds on the one before it. Effort: S = unde
 
 ### Milestone 1: Release-ready
 Goal: anyone can download, install and trust a first public version.
-- [ ] Decide the final project name and rename everything before publishing (S) (deferred: the working name is fine until publishing)
+- [x] Decide the final project name and rename everything before publishing (S) (deferred: the working name is fine until publishing) See Milestone 7
 - [x] LICENSE (MIT) and SECURITY.md (S)
 - [x] README screenshots or a short GIF (S) (after Milestone 3)
 - [x] Agent keeps its config in the OS config folder by default (`-config` still overrides) (S) (new)
@@ -124,15 +124,22 @@ Must be finished before any feature that serves file contents.
 - [x] Upload from phone into a single configured drop folder on the PC (M, needs Milestone 5)
 
 ## Milestone 7: Pre-launch polish
-- [ ] **Decide the project name** (blocks everything below that mentions it) (S)
-- [ ] Rename pass: constants, package IDs, the discovery service name, packaging files, docs, repo (M)
-- [ ] Organize the docs: one README that sends people to a short docs index (install, quick start, security, API, privacy, releasing, FAQ), with screenshots refreshed (M)
-- [ ] Third-party licence notices (Go modules and npm packages) (S)
-- [ ] Hosted privacy policy and a support contact (S)
-- [ ] The app's first-run walkthrough explains the file-access and upload switches in the dashboard (S)
-- [ ] An "update available" hint in the agent and the app (S, optional)
-- [ ] Store paperwork: accounts, listing text, screenshots, data-safety and privacy forms (M)
+- [x] **Decide the project name** (blocks the items marked *) 
+- [ ] * Rename pass: constants, package IDs, the discovery service name, packaging files, docs, repo (M)
+- [x] Docs organized: README, docs index, getting started, FAQ, security model, security policy, privacy policy, API reference
+- [ ] Refresh the screenshots, including the new dashboard (S)
+- [x] Third-party licence notices: the generator is ready (scripts/licenses.sh); run it and review (S)
+- [ ] * Hosted privacy policy and a support contact (the Markdown is written; hosting waits for the name) (S)
+- [ ] * Landing page on GitHub Pages: what it is, how it works, downloads, FAQ, privacy (M)
+- [x] The app's first-run walkthrough explains the file-access and upload switches in the dashboard (S)
+- [ ] An opt-in "update available" hint in the agent and the app (S, optional)
+- [ ] * Store paperwork: accounts, listing text, screenshots, data-safety and privacy forms (M)
 - [ ] Code signing and notarization decisions for Windows and macOS (M)
+- [x] "Report a problem" gets a way to send the report: a support email, web form or issue-tracker link, with Copy and Open mail buttons in the dashboard and the app (the contact is decided at launch) (S)
+- [x] Downloads: a queue with progress, a Downloads list in Settings, and a 30-day history
+- [ ] Downloads that keep going in the background (an Android foreground service) and survive restarts (M)
+- [ ] Select several files, or a whole folder, and download them in one go (M)
+- [~] Project name chosen: **Perigee** (pending the final vetting); the rename pass follows
 
 ### Milestone 8: Publishing
 - [ ] Linux packages (`.deb`, `.rpm`), Homebrew tap, Scoop and winget manifests (M)
@@ -174,6 +181,7 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - [ ] Save a file straight into a chosen folder on the phone (Android: the folder picker, with large-file safe streaming) (M)
 - [ ] Share files to the app from other apps ("Send to PC" in the Android share sheet) (M)
 - [ ] Receive whole folders, and a "received files" list in the dashboard (S)
+- [ ] Phone-to-phone transfer through the PC: the agent keeps a small inbox for each paired phone; one phone sends a file to another, and the other phone gets a "new file" notice and downloads it with the queue. It reuses pairing, keys, limits and downloads (M)
 
 ## Changelog
 
@@ -199,3 +207,4 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - 2026-10-13: Milestone 6, slice 2: open, preview and share files in the app.
 - 2026-10-13: Milestone 6, slice 3: upload from the phone into a drop folder. Milestone 6 complete.
 - 2026-10-13: Published v0.1.0-rc3 (pre-release).
+- 2026-10-20: Pre-launch polish. Docs reorganized (README, getting started, FAQ, security model, privacy policy, API reference); downloads queue with a Downloads list and 30-day history; redesigned dashboard; "Report a problem" shows how to send it; first-run walkthrough explains the file-access and upload switches; third-party notices generated; working name chosen (Perigee).

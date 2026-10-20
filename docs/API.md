@@ -1,155 +1,105 @@
-# API Contract (v1)
+# API reference (version 1)
 
-Base URL: `http://<pc-ip>:<port>/api/v1` (default port `8080`)
+The agent's phone API is a small HTTP/JSON API served on port **8080** (configurable). The dashboard is a separate, local-only interface and isn't part of this API.
 
-## Authentication
+Base URL: `http://<pc-address>:8080/api/v1`
 
-Every request must include:
-
-```
-Authorization: Bearer <token>
-```
-
-The token lives in the agent's `config.json`. A missing or wrong token returns:
-
-```
-401 {"error": "unauthorized"}
-```
-
-## Path rules
-
-- Always forward slashes, never a leading slash.
-- The first segment is the **root label** from `config.json` (e.g. `Documents`).
-- A root itself is an entry with `parent: ""`.
-
-## Pairing (QR payload)
-
-On startup the agent prints a QR code encoding this JSON. The app scans it, stores it, and uses it for all later requests. Manual entry (host, port, token) is the fallback.
-
-```json
-{"v":1,"host":"192.168.1.23","port":8080,"token":"<token>","id":"<device_id>","name":"My PC"}
-```
-
-## Other responses
-
-- `403 {"error":"forbidden"}`: the request came from a non-LAN address (only private, loopback and link-local sources are served).
-- Right after agent start, `indexed_at` is `0` until the first scan finishes. Clients should check `ping` and retry shortly instead of syncing an empty index.
-
-## GET /ping
-
-Health check, device identity, and index status.
-
-```json
-{
-  "device_id": "a1b2c3d4e5f60718",
-  "name": "My PC",
-  "version": "0.1.0",
-  "indexed_at": 1759660000,
-  "file_count": 48213,
-  "scanning": false
-}
-```
-
-- `indexed_at`: Unix seconds of the last completed scan (`0` if none yet).
-- `file_count`: number of entries (files and folders) in the snapshot.
-- `scanning`: `true` while a scan is running.
-
-## GET /index
-
-Streams the full snapshot as NDJSON (`Content-Type: application/x-ndjson`), one entry per line. The `X-File-Count` response header holds the total number of lines, so the client can show progress.
-
-```
-{"path":"Documents","parent":"","name":"Documents","ext":"","size":0,"mtime":1759660000,"is_dir":true}
-{"path":"Documents/cv","parent":"Documents","name":"cv","ext":"","size":0,"mtime":1759660000,"is_dir":true}
-{"path":"Documents/cv/resume.pdf","parent":"Documents/cv","name":"resume.pdf","ext":"pdf","size":48213,"mtime":1759660000,"is_dir":false}
-```
-
-| Field | Type | Notes |
-| --- | --- | --- |
-| `path` | string | Unique, includes root label |
-| `parent` | string | `""` for roots |
-| `name` | string | Base name |
-| `ext` | string | Lowercase, no dot; `""` for folders |
-| `size` | int | Bytes; `0` for folders |
-| `mtime` | int | Unix seconds |
-| `is_dir` | bool | |
-
-If a scan is running, this serves the previous completed snapshot.
-
-**Compression.** If the request has `Accept-Encoding: gzip`, the body is gzip-compressed and the response carries `Content-Encoding: gzip`. Phones and `curl --compressed` ask for it automatically; other clients get plain NDJSON. `X-File-Count` is the number of entries either way.
-
-## POST /reindex
-
-Triggers a rescan in the background.
-
-```
-202 {"status": "started"}
-409 {"status": "already_scanning"}
-```
-
-Poll `GET /ping` until `scanning` is `false` and `indexed_at` has changed.
+The connection is **not encrypted**. The agent only answers devices on the local network (private, loopback and link-local addresses, plus `allowed_networks`); anything else gets `403`.
 
 ## Versioning
 
-Breaking changes bump the URL prefix (`/api/v2`). Adding fields to entries is not breaking, so clients must ignore unknown fields.
+`GET /ping` reports `api_version` (currently `1`). Additions (new endpoints, new fields) keep the version. A breaking change raises it, and the app refuses agents outside the range it supports.
 
-## GET /roots
+## Authentication
 
-Where each indexed folder lives on the PC, so a client can show real paths. Added after v0.1: older agents return 404, so clients must treat it as optional.
+Every request except `POST /pair` needs a key:
+
+```
+Authorization: Bearer <key>
+```
+
+A key is the one a phone receives from `POST /pair`. The old shared token (settings key `token`) is accepted unless `disable_legacy_token` is true. Uploading needs a phone key, never the shared token.
+
+| Status | Meaning |
+| --- | --- |
+| `401 {"error":"unauthorized"}` | Missing or wrong key |
+| `403 {"error":"forbidden"}` | The request doesn't come from an allowed network |
+| `429 {"error":"too_many_attempts"}` + `Retry-After` | 10 failed attempts within a minute from one address lock it out for a minute |
+
+## Endpoints
+
+### `GET /ping`
 
 ```json
 {
-  "sep": "/",
-  "roots": [
-    { "label": "Documents", "path": "/home/me/Documents" }
-  ]
+  "device_id": "0123456789abcdef", "name": "My PC", "version": "0.1.0", "api_version": 1,
+  "indexed_at": 1760000000, "file_count": 2367, "scanning": false,
+  "file_access": false, "uploads": false, "upload_max_mb": 100, "upload_folder": ""
 }
 ```
 
-- `label` is the first segment of every path under that root in the index.
-- `path` is the absolute folder on the PC.
-- `sep` is the PC's path separator (`/` or `\`). To build a full path, join `path`, `sep`, and the rest of the index path with `/` replaced by `sep`.
+`indexed_at` is Unix seconds (0 before the first scan). `file_access` says whether `/download` works, `uploads` whether `/upload` works. `upload_folder` is the drop folder's name (not its path).
 
-### Pairing: `POST /api/v1/pair` (no Authorization header)
+### `GET /index`
 
-Trades a one-time pairing code (shown by the agent: in the terminal, in the QR code and in the dashboard) for this phone's own key.
+Streams the file list as **NDJSON**, one entry per line. The header `X-File-Count` carries the number of entries. Send `Accept-Encoding: gzip` to receive it compressed. Entries:
 
-Request: `{"code": "ABCDE-FGHJK", "device_name": "Pixel 8"}` (the code is not case sensitive; spaces and dashes are ignored)
+```json
+{"path":"Documents/cv/resume.pdf","parent":"Documents/cv","name":"resume.pdf","ext":"pdf","size":52113,"mtime":1759000000,"is_dir":false}
+```
 
-Answers:
-- `200 {"token": "<64 hex>", "phone_id": "...", "pc_id": "...", "pc_name": "..."}` - use the token as `Authorization: Bearer <token>` from now on
-- `401 {"error": "invalid_code"}` - wrong, used or expired code (a code works once and lasts 10 minutes)
-- `404 {"error": "pairing_unavailable"}` - this agent has no pairing codes
-- `409` - too many phones are paired (20)
-- `429` - too many wrong attempts; see `Retry-After`
+- `path` starts with the folder's label. A folder's own entry has `parent` set to `""`.
+- `mtime` is Unix seconds. `size` is 0 for folders. `ext` is lower case, without the dot.
+- Folders are entries too. The list reflects the last completed scan.
 
-The QR code carries `{"v":2,"host","port","code","id","name"}`. Agents before this change carried `{"v":1,"host","port","token","id","name"}`, which the app still understands.
+### `GET /roots`
 
-### Keys
+Where each enabled shared folder lives on the PC: `{"sep":"/","roots":[{"label":"Documents","path":"/home/me/Documents"}]}`.
 
-Every request except `/pair` needs `Authorization: Bearer <key>`. A key is either a phone's own key (from `/pair`) or, unless switched off in the dashboard (`disable_legacy_token`), the old shared token. The agent stores only a SHA-256 hash of each phone's key, in `devices.json`. Wrong keys and wrong codes count together toward the lockout (10 per minute per address).
+### `POST /reindex`
 
-### `GET /api/v1/download?path=<file path>`
+Starts a rescan. `202 {"status":"started"}`, or `409 {"status":"already_scanning"}`.
 
-Sends one file. `path` is the path as it appears in the file list (for example `Documents/cv/me.pdf`). Needs a key, like every request except `/pair`.
+### `POST /pair` (no key)
 
-- Supports `Range` requests (`206 Partial Content`) and `HEAD`.
-- `Content-Disposition: attachment` with the file name (RFC 5987), `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`.
-- `403 {"error":"downloads_off"}`: the person hasn't allowed file access on the PC (the default). The ping answer says `"file_access": true|false`.
-- `404 {"error":"not_found"}`: no such listed file. The same answer is given for files that exist but aren't shared (skipped by a rule, in a folder that is switched off, links, anything unusual), so the answer reveals nothing.
-- `403 {"error":"unreadable"}`: the agent isn't allowed to read it.
-- `503 {"error":"busy"}` + `Retry-After`: four files are already being sent.
+Trades a one-time pairing code for the phone's own key.
 
-The ping answer has a new field, `file_access` (boolean). The API version is unchanged (1).
+Request: `{"code":"ABCDE-FGHJK","device_name":"Pixel 8"}` (not case sensitive; spaces and dashes are ignored).
 
-### `POST /api/v1/upload`
+| Status | Meaning |
+| --- | --- |
+| `200 {"token":"<64 hex>","phone_id":"...","pc_id":"...","pc_name":"..."}` | Use `token` as the key from now on |
+| `401 {"error":"invalid_code"}` | Wrong, used or expired code (a code works once, for 10 minutes) |
+| `404 {"error":"pairing_unavailable"}` | This agent has no pairing codes |
+| `409` | Too many phones are paired (20) |
+| `429` | Too many wrong attempts (shared with the key lockout) |
 
-Sends one file into the drop folder on the PC. The request body is the file itself (raw bytes); `X-File-Name` carries its name, percent-encoded. Only a phone paired with a code may use it (not the old shared token).
+The QR code carries `{"v":2,"host":"...","port":8080,"code":"...","id":"...","name":"..."}`. Agents before per-phone keys carried `{"v":1,...,"token":"..."}`.
 
-Answers:
-- `201 {"name": "<saved as>", "size": <bytes>}`. A name that is taken becomes `name (1).ext`; nothing is ever overwritten.
-- `403 uploads_off`: the person hasn't switched it on (the default). `403 pair_again`: this phone uses the old shared token.
-- `413 too_large`: over the PC's limit (the ping answer has `upload_max_mb`). `415 program_file`: `.exe`, `.sh` and similar are refused unless the person allowed them.
-- `429 upload_limit` + `Retry-After`: the hourly limit for all phones together. `503 busy` (two at once) or `503 drop_folder_unavailable`. `507 disk_full`.
+### `GET /download?path=<file path>`
 
-The ping answer has two new fields, `uploads` (boolean) and `upload_max_mb`. The API version is unchanged (1).
+Sends one file. `path` is the path as it appears in the file list. Off unless the person allows it (`file_access`).
+
+- Supports `Range` (`206`) and `HEAD`. Headers: `Content-Disposition: attachment` (RFC 5987 name), `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`.
+- `403 downloads_off`, `403 unreadable`, `404 not_found` (also for files that exist but aren't shared, so the answer reveals nothing), `503 busy` + `Retry-After` (four at a time).
+
+### `POST /upload`
+
+Saves one file into the drop folder. The body is the file's raw bytes. `X-File-Name` carries its name, percent-encoded. Off unless the person allows it (`uploads`). Phone keys only.
+
+| Status | Meaning |
+| --- | --- |
+| `201 {"name":"<saved as>","size":123}` | Saved. A taken name becomes `name (1).ext` and nothing is overwritten. |
+| `403 uploads_off` / `403 pair_again` | Switched off, or the phone uses the old shared token |
+| `413 too_large` | Over `upload_max_mb` |
+| `415 program_file` | `.exe`, `.sh` and similar, unless allowed |
+| `429 upload_limit` + `Retry-After` | The hourly limit for all phones together |
+| `503 busy` / `drop_folder_unavailable`, `507 disk_full` | |
+
+## Discovery
+
+The agent announces itself on the local network with mDNS (service `_fs-sync._tcp`) so the app can find a paired PC again after its address changes. The app matches the device id from `/ping`. Pairing always needs the code.
+
+## Settings keys (for reference)
+
+`device_id`, `device_name`, `port`, `web_port`, `disable_web_ui`, `token` (old shared token), `roots` (`path`, `label`, `disabled`, `include_hidden`), `extra_ignores`, `include_hidden`, `allowed_networks`, `disable_legacy_token`, `allow_file_access`, `allow_uploads`, `upload_dir`, `upload_max_mb`, `upload_per_hour`, `upload_allow_programs`. Most are changed from the dashboard.
