@@ -19,7 +19,7 @@ import (
 )
 
 // doctorServiceType must match the service the agent announces in mdns.go.
-const doctorServiceType = "_fs-sync._tcp"
+const doctorServiceType = "_perigee._tcp"
 
 // doctorBrowseWait is how long the discovery check listens. Tests shorten it.
 var doctorBrowseWait = 3500 * time.Millisecond

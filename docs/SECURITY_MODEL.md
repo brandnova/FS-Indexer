@@ -1,6 +1,6 @@
 # Security model
 
-This page says what FS Indexer protects, how, and where its limits are.
+This page says what Perigee Files protects, how, and where its limits are.
 
 ## What it protects
 

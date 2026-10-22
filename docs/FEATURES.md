@@ -125,9 +125,9 @@ Must be finished before any feature that serves file contents.
 
 ## Milestone 7: Pre-launch polish
 - [x] **Decide the project name** (blocks the items marked *) 
-- [ ] * Rename pass: constants, package IDs, the discovery service name, packaging files, docs, repo (M)
+- [x] * Rename pass: constants, package IDs, the discovery service name, packaging files, docs, repo (M)
 - [x] Docs organized: README, docs index, getting started, FAQ, security model, security policy, privacy policy, API reference
-- [ ] Refresh the screenshots, including the new dashboard (S)
+- [x] Refresh the screenshots, including the new dashboard (S)
 - [x] Third-party licence notices: the generator is ready (scripts/licenses.sh); run it and review (S)
 - [ ] * Hosted privacy policy and a support contact (the Markdown is written; hosting waits for the name) (S)
 - [ ] * Landing page on GitHub Pages: what it is, how it works, downloads, FAQ, privacy (M)
@@ -139,7 +139,10 @@ Must be finished before any feature that serves file contents.
 - [x] Downloads: a queue with progress, a Downloads list in Settings, and a 30-day history
 - [ ] Downloads that keep going in the background (an Android foreground service) and survive restarts (M)
 - [ ] Select several files, or a whole folder, and download them in one go (M)
-- [~] Project name chosen: **Perigee** (pending the final vetting); the rename pass follows
+- [x] Project name chosen: **Perigee Files** (short: Perigee)
+- [x] New icons for the agent and the app, with a script that builds every size (scripts/make-icons.sh)
+- [x] Bottom navigation: the active tab highlight is now a smooth capsule
+- [x] The app no longer requests the microphone permission
 
 ### Milestone 8: Publishing
 - [ ] Linux packages (`.deb`, `.rpm`), Homebrew tap, Scoop and winget manifests (M)
@@ -182,6 +185,7 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - [ ] Share files to the app from other apps ("Send to PC" in the Android share sheet) (M)
 - [ ] Receive whole folders, and a "received files" list in the dashboard (S)
 - [ ] Phone-to-phone transfer through the PC: the agent keeps a small inbox for each paired phone; one phone sends a file to another, and the other phone gets a "new file" notice and downloads it with the queue. It reuses pairing, keys, limits and downloads (M)
+- [ ] Easy cache clearing: a "Clear temporary files" row in the app's Settings (the cached copies and, optionally, the downloads list), and a matching button in the dashboard (S)
 
 ## Changelog
 
@@ -208,3 +212,5 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - 2026-10-13: Milestone 6, slice 3: upload from the phone into a drop folder. Milestone 6 complete.
 - 2026-10-13: Published v0.1.0-rc3 (pre-release).
 - 2026-10-20: Pre-launch polish. Docs reorganized (README, getting started, FAQ, security model, privacy policy, API reference); downloads queue with a Downloads list and 30-day history; redesigned dashboard; "Report a problem" shows how to send it; first-run walkthrough explains the file-access and upload switches; third-party notices generated; working name chosen (Perigee).
+- 2026-10-21: Renamed to Perigee Files (command `perigee`, app "Perigee"); new agent and app icons; bottom navigation highlight polished; the microphone permission removed; docs and repository renamed.
+- 2026-10-22: Rename pass finished: the discovery service is now `_perigee._tcp`, the dashboard's saved settings use `perigee.*` keys, icons replaced everywhere (agent, Windows, macOS, Linux, app, adaptive, store), macOS app script and release check updated, screenshot plan and README screenshots section prepared.

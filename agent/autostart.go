@@ -12,9 +12,9 @@ import (
 
 // Names the login entries go by. Change them together with the project name.
 const (
-	autostartName = "FSIndexerAgent"             // Windows: the value under the Run key
-	autostartID   = "com.brandnova.fsindexer"    // macOS: the login item's label and file name
-	autostartFile = "fsagent-autostart.desktop" // Linux: the file in ~/.config/autostart
+	autostartName = "PerigeeAgent"             // Windows: the value under the Run key
+	autostartID   = "com.brandnova.perigee"    // macOS: the login item's label and file name
+	autostartFile = "perigee-autostart.desktop" // Linux: the file in ~/.config/autostart
 )
 
 // AutostartState is what the dashboard shows.

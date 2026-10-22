@@ -1,10 +1,8 @@
-# FS Indexer
+# Perigee Files
 
 **Search and browse your computer's files from your phone, even when the computer is asleep.**
 
 A small **agent** on your PC makes a list of the folders you choose. The **app** copies that list to your phone, so you can search it instantly, anywhere you are. Your files stay on your PC unless you decide to open or download them.
-
-> **Working name.** The project is called FS Indexer until its final name is chosen.
 
 ## What it does
 
@@ -36,13 +34,13 @@ The connection between your phone and PC is **not encrypted yet**. Use it on a n
 
 | | Download | Notes |
 | --- | --- | --- |
-| **Windows** | `fsagent_<version>_windows_amd64.zip` | Unzip and double-click `fsagent.exe`. Windows SmartScreen: "More info", then "Run anyway". Allow the firewall prompt on **Private** networks. |
-| **macOS** | `FS-Indexer_<version>_macOS_arm64.app.zip` (Apple silicon) or `_amd64` (Intel) | Unzip, then right-click **FS Indexer**, then Open (it isn't signed yet). |
-| **Linux** | `.deb`, `.rpm` or `.tar.gz` | `sudo dnf install ./fsagent_*.rpm` or `sudo apt install ./fsagent_*.deb`. FS Indexer then appears in your menu. |
-| **Android** | `fs-browser-<version>.apk` | Install it from the release page (allow "install unknown apps" once). A Play Store listing is planned. |
+| **Windows** | `perigee_<version>_windows_amd64.zip` | Unzip and double-click `perigee.exe`. Windows SmartScreen: "More info", then "Run anyway". Allow the firewall prompt on **Private** networks. |
+| **macOS** | `Perigee-Files_<version>_macOS_arm64.app.zip` (Apple silicon) or `_amd64` (Intel) | Unzip, then right-click **Perigee Files**, then Open (it isn't signed yet). |
+| **Linux** | `.deb`, `.rpm` or `.tar.gz` | `sudo dnf install ./perigee_*.rpm` or `sudo apt install ./perigee_*.deb`. Perigee Files then appears in your menu. |
+| **Android** | `perigee-<version>.apk` | Install it from the release page (allow "install unknown apps" once). A Play Store listing is planned. |
 | **iPhone** | Planned | |
 
-Everything is on the [releases page](https://github.com/brandnova/FS-Indexer/releases). Check any download against `checksums.txt`. Use the app and the agent from the same release.
+Everything is on the [releases page](https://github.com/brandnova/perigee-files/releases). Check any download against `checksums.txt`. Use the app and the agent from the same release.
 
 ## Quick start
 
@@ -54,10 +52,22 @@ More: [Getting started](docs/GETTING_STARTED.md) · [FAQ](docs/FAQ.md).
 
 ## Screenshots
 
-| | | |
-| --- | --- | --- |
-| ![Pairing](docs/images/pairing.png) | ![Home](docs/images/home-light.png) | ![Search](docs/images/search.png) |
-| ![Details](docs/images/details.png) | ![Filters](docs/images/filters.png) | ![Dark mode](docs/images/home-dark.png) |
+**On your PC: the dashboard**
+
+<p>
+  <img src="docs/images/agent/home.png" alt="The dashboard's Home page" width="32%">
+  <img src="docs/images/agent/phones.png" alt="Pairing a phone with a QR code" width="32%">
+  <img src="docs/images/agent/settings.png" alt="Settings: what your phone can do" width="32%">
+</p>
+
+**On your phone: the app**
+
+<p>
+  <img src="docs/images/app/home.png" alt="Home" width="24%">
+  <img src="docs/images/app/search.png" alt="Searching your PC's files" width="24%">
+  <img src="docs/images/app/details.png" alt="A file's details, with Download, Open and Share" width="24%">
+  <img src="docs/images/app/downloads.png" alt="The downloads list" width="24%">
+</p>
 
 ## Documentation
 
@@ -72,11 +82,11 @@ More: [Getting started](docs/GETTING_STARTED.md) · [FAQ](docs/FAQ.md).
 ## Build from source
 
 ```bash
-git clone https://github.com/brandnova/FS-Indexer.git
+git clone https://github.com/brandnova/perigee-files.git
 cd FS-Indexer
 
 # The agent (Go)
-cd agent && go test ./... && go build -o fsagent . && ./fsagent
+cd agent && go test ./... && go build -o perigee . && ./perigee
 
 # The app (Expo / React Native). It needs a development build, not Expo Go.
 cd mobile && npm install && npx expo start
@@ -86,7 +96,7 @@ Repository layout: `agent/` (the Go agent and its dashboard), `mobile/` (the app
 
 ## Support and security
 
-- **Questions and bugs:** [open an issue](https://github.com/brandnova/FS-Indexer/issues) or email **brandnova.dev@gmail.com**. In the dashboard, **Help -> Report a problem** collects what's needed, with your keys and user name removed. Nothing is sent automatically.
+- **Questions and bugs:** [open an issue](https://github.com/brandnova/perigee-files/issues) or email **brandnova.dev@gmail.com**. In the dashboard, **Help -> Report a problem** collects what's needed, with your keys and user name removed. Nothing is sent automatically.
 - **Security problems:** see [SECURITY.md](SECURITY.md). Please don't post them publicly.
 
 ## License and credits

@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-const binaryName = "fsagent"
+const binaryName = "perigee"
 
 func main() {
 	configFlag := flag.String("config", "", "path to the settings file (default: <user config dir>/"+appDirName+"/config.json)")
@@ -42,7 +42,7 @@ func main() {
 	flag.Parse()
 
 	if flag.Arg(0) == "doctor" {
-		*doctor = true // "fsagent doctor" works too
+		*doctor = true // "perigee doctor" works too
 	}
 
 	if *showVersion {

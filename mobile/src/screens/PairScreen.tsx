@@ -1,7 +1,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ChevronRight, Folder, Monitor, QrCode, Sparkles, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View, Image } from 'react-native';
 import { ApiError, toApiError } from '../api/client';
 import { startDiscovery, type DiscoveredDevice } from '../discovery';
 import { normalizeCode, pairWith, parseAddress, parseQrPayload } from '../pairing';
@@ -96,9 +96,7 @@ export default function PairScreen({ onPaired, onDemo }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-      <View style={styles.brand} importantForAccessibility="no-hide-descendants">
-        <Folder size={34} color={colors.folder} />
-      </View>
+      <Image source={require('../../assets/icon.png')} style={styles.logo} accessibilityIgnoresInvertColors importantForAccessibility="no" />
 
       <View style={styles.titles}>
         <Text variant="display">Connect to your PC</Text>
@@ -307,6 +305,7 @@ const makeStyles = (c: Palette) =>
       marginTop: 12,
     },
     titles: { gap: 8 },
+    logo: { width: 72, height: 72, borderRadius: 22, marginTop: 12 },
     nearby: { gap: 10 },
     inline: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     nearbyRow: {

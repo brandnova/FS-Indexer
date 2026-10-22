@@ -3,8 +3,8 @@
 
 # Agent (Go): config holds the access token
 /agent/config.json
-/agent/fsagent
-/agent/fsagent.exe
+/agent/perigee
+/agent/perigee.exe
 /agent/agent.log
 
 # Mobile (Expo / React Native)

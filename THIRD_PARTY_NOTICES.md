@@ -1,12 +1,11 @@
 # Third-party notices
 
-FS Indexer is MIT licensed. It includes the open-source components below, each under its own licence.
+Perigee Files is MIT licensed. It includes the open-source components below, each under its own licence.
 
 ## Agent (Go modules)
 
 | Module | Version | Licence | Licence text |
 | --- | --- | --- | --- |
-| fsindexer/agent | Unknown | Unknown | Unknown |
 | github.com/cenkalti/backoff | v2.2.1 | MIT | https://github.com/cenkalti/backoff/blob/v2.2.1/LICENSE |
 | github.com/grandcat/zeroconf | v1.0.0 | MIT | https://github.com/grandcat/zeroconf/blob/v1.0.0/LICENSE |
 | github.com/mdp/qrterminal/v3 | v3.2.1 | MIT | https://github.com/mdp/qrterminal/blob/v3.2.1/LICENSE |

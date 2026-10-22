@@ -1,5 +1,5 @@
 version: 2
-project_name: fsagent
+project_name: perigee
 
 before:
   hooks:
@@ -9,7 +9,7 @@ builds:
   - id: agent
     dir: agent
     main: .
-    binary: fsagent
+    binary: perigee
     env:
       - CGO_ENABLED=0
     goos: [linux, windows, darwin]
@@ -18,7 +18,7 @@ builds:
       - -s -w -X main.version={{.Version}}
     hooks:
       post:
-        # macOS only: wraps the binary in "FS Indexer.app" (the script ignores every other system)
+        # macOS only: wraps the binary in "Perigee Files.app" (the script ignores every other system)
         - cmd: sh scripts/make-macapp.sh "{{ .Path }}" "{{ .Os }}" "{{ .Arch }}" "{{ .Version }}"
           dir: .
 
@@ -35,21 +35,25 @@ archives:
 # .deb and .rpm: install the program, a menu entry and the icons
 nfpms:
   - id: linux-packages
-    package_name: fsagent
+    package_name: perigee
     vendor: Brand Nova
     homepage: https://brandnova.pythonanywhere.com
-    maintainer: Brand Nova
-    description: Shares your file names with the FS Indexer phone app, so you can search your computer from your phone.
+    maintainer: Brand Nova <brandnova.dev@gmail.com>
+    description: Search and browse your PC's files from your phone, over your own network.
     license: MIT
     formats: [deb, rpm]
     bindir: /usr/bin
     contents:
-      - src: packaging/linux/fsagent.desktop
-        dst: /usr/share/applications/fsagent.desktop
+      - src: packaging/linux/perigee.desktop
+        dst: /usr/share/applications/perigee.desktop
+      - src: branding/icon-48.png
+        dst: /usr/share/icons/hicolor/48x48/apps/perigee.png
+      - src: branding/icon-128.png
+        dst: /usr/share/icons/hicolor/128x128/apps/perigee.png
       - src: branding/icon-256.png
-        dst: /usr/share/icons/hicolor/256x256/apps/fsagent.png
+        dst: /usr/share/icons/hicolor/256x256/apps/perigee.png
       - src: branding/icon-512.png
-        dst: /usr/share/icons/hicolor/512x512/apps/fsagent.png
+        dst: /usr/share/icons/hicolor/512x512/apps/perigee.png
 
 checksum:
   name_template: checksums.txt
@@ -66,6 +70,6 @@ changelog:
 
 release:
   draft: true      # review notes and attach the APK before publishing
-  prerelease: auto # tags like v0.1.0-rc2 are marked as pre-releases
+  prerelease: auto # tags like v0.1.0-rc4 are marked as pre-releases
   extra_files:
     - glob: ./dist/*.app.zip

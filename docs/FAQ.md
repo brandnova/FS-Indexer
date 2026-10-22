@@ -6,7 +6,7 @@ Only the **names, sizes and dates** of the folders you choose are copied to your
 
 ## My phone can't connect.
 
-1. Open the dashboard, then **Help → Check my setup** (or run `fsagent -doctor`).
+1. Open the dashboard, then **Help → Check my setup** (or run `perigee-doctor`).
 2. Make sure the phone and the PC are on the same Wi-Fi. A guest network often stops devices from seeing each other.
 3. Turn off any VPN on the phone and on the PC.
 4. Open `http://<address>/api/v1/ping` in the phone's browser (the dashboard shows the address). If you see `{"error":"unauthorized"}`, the network is fine and only the key is wrong: pair again. If nothing loads, a firewall or a router setting is blocking it.
@@ -46,7 +46,7 @@ Not directly: the agent only accepts connections from your local network. Using 
 
 ## Can I run it on a server, or without a screen?
 
-Yes. Run `fsagent -no-web -quiet`, or use `-background`. Pair by running `fsagent -pair` while it runs.
+Yes. Run `perigee-no-web -quiet`, or use `-background`. Pair by running `perigee-pair` while it runs.
 
 ## Why does my antivirus or SmartScreen warn about the download?
 
@@ -54,4 +54,4 @@ The builds aren't code-signed yet, which makes Windows and macOS cautious about 
 
 ## How do I report a bug?
 
-Dashboard, **Help → Report a problem**: it shows exactly what will be shared (your keys and user name are removed) and lets you copy or download it. Then [open an issue](https://github.com/brandnova/FS-Indexer/issues) or email brandnova.dev@gmail.com and paste the report in the message..
+Dashboard, **Help → Report a problem**: it shows exactly what will be shared (your keys and user name are removed) and lets you copy or download it. Then [open an issue](https://github.com/brandnova/perigee-files/issues) or email brandnova.dev@gmail.com and paste the report in the message..

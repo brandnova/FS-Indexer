@@ -105,7 +105,7 @@
       throw new Error('The agent is not responding.');
     }
     if (res.status === 401 || res.status === 403) {
-      showStopped('This page has expired', 'Run "fsagent -ui" (or double-click the agent) to open the dashboard again.');
+      showStopped('This page has expired', 'Run "perigee -ui" (or double-click the agent) to open the dashboard again.');
       throw new Error('locked');
     }
     const isJSON = (res.headers.get('content-type') || '').includes('json');
@@ -167,8 +167,8 @@
   // =====================================================================
   // Shell: sidebar, drawer, theme, delegated actions
   // =====================================================================
-  const SIDEBAR_KEY = 'fsagent.sidebar';
-  const THEME_KEY = 'fsagent.theme';
+  const SIDEBAR_KEY = 'perigee.sidebar';
+  const THEME_KEY = 'perigee.theme';
 
   function applySidebar(mode) {
     document.body.dataset.sidebar = mode;

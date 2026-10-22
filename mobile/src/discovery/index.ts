@@ -5,7 +5,7 @@ export interface DiscoveredDevice {
   port: number;
 }
 
-const SERVICE_TYPE = 'fs-sync'; // advertised by the agent as _fs-sync._tcp
+const SERVICE_TYPE = 'perigee'; // advertised by the agent as _perigee._tcp
 
 interface ZeroconfLike {
   on(event: string, listener: (...args: any[]) => void): void;

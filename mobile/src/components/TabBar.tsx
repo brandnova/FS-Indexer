@@ -1,7 +1,7 @@
 import { Clock, Folder, House, Pin, Settings, type LucideIcon } from 'lucide-react-native';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Text, fonts, radius, useTheme, useThemedStyles, type Palette } from '../ui';
+import { Text, fonts, useTheme, useThemedStyles, type Palette } from '../ui';
 
 export type TabKey = 'home' | 'files' | 'recent' | 'pinned' | 'settings';
 
@@ -12,6 +12,10 @@ const TABS: { key: TabKey; label: string; Icon: LucideIcon }[] = [
   { key: 'pinned', label: 'Pinned', Icon: Pin },
   { key: 'settings', label: 'Settings', Icon: Settings },
 ];
+
+// The highlight is a fully rounded capsule: its radius is half its height.
+const PILL_WIDTH = 64;
+const PILL_HEIGHT = 32;
 
 export default function TabBar({ tab, onChange }: { tab: TabKey; onChange: (tab: TabKey) => void }) {
   const insets = useSafeAreaInsets();
@@ -60,8 +64,16 @@ const makeStyles = (c: Palette) =>
       borderTopColor: c.border,
       paddingTop: 8,
     },
-    item: { flex: 1, alignItems: 'center', gap: 2, minHeight: 52 },
-    pill: { width: 56, height: 30, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+    item: { flex: 1, alignItems: 'center', gap: 3, minHeight: 54 },
+    pill: {
+      width: PILL_WIDTH,
+      height: PILL_HEIGHT,
+      borderRadius: PILL_HEIGHT / 2,
+      borderCurve: 'continuous',
+      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     pillActive: { backgroundColor: c.primarySoft },
     labelActive: { fontFamily: fonts.bold },
   });

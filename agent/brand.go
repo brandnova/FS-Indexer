@@ -8,5 +8,5 @@ const (
 	brandLine = "Made by " + brandName
 
 	supportEmail = "brandnova.dev@gmail.com"
-	issuesURL    = "https://github.com/brandnova/FS-Indexer/issues" // follows the repository's name
+	issuesURL    = "https://github.com/brandnova/perigee-files/issues" // follows the repository's name
 )

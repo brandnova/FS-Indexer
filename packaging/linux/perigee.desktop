@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Perigee Files
+GenericName=PC file search for your phone
+Comment=Lets your phone search and browse this computer's files
+Exec=perigee -ui
+Icon=perigee
+Terminal=false
+Categories=Utility;Network;
+Keywords=files;search;phone;
+StartupNotify=false

@@ -8,26 +8,26 @@
 
 ## 1. Install the agent
 
-Download it from the [releases page](https://github.com/brandnova/FS-Indexer/releases).
+Download it from the [releases page](https://github.com/brandnova/perigee-files/releases).
 
-**Windows.** Unzip `fsagent_<version>_windows_amd64.zip` and double-click `fsagent.exe`. If SmartScreen warns you, choose **More info**, then **Run anyway** (the download isn't code-signed yet). When Windows asks about the firewall, allow **Private networks**.
+**Windows.** Unzip `perigee_<version>_windows_amd64.zip` and double-click `perigee.exe`. If SmartScreen warns you, choose **More info**, then **Run anyway** (the download isn't code-signed yet). When Windows asks about the firewall, allow **Private networks**.
 
-**macOS.** Unzip the `.app.zip` for your Mac (Apple silicon is `arm64`, Intel is `amd64`), then right-click **FS Indexer** and choose **Open**. If macOS still blocks it, open System Settings, Privacy & Security, and choose **Open Anyway**, or run `xattr -dr com.apple.quarantine "FS Indexer.app"` in Terminal.
+**macOS.** Unzip the `.app.zip` for your Mac (Apple silicon is `arm64`, Intel is `amd64`), then right-click **Perigee Files** and choose **Open**. If macOS still blocks it, open System Settings, Privacy & Security, and choose **Open Anyway**, or run `xattr -dr com.apple.quarantine "Perigee Files.app"` in Terminal.
 
 **Linux.** Install the package for your system:
 
 ```bash
-sudo dnf install ./fsagent_*_linux_amd64.rpm      # Fedora, RHEL
-sudo apt install ./fsagent_*_linux_amd64.deb      # Debian, Ubuntu
+sudo dnf install ./perigee_*_linux_amd64.rpm      # Fedora, RHEL
+sudo apt install ./perigee_*_linux_amd64.deb      # Debian, Ubuntu
 ```
 
-Then start **FS Indexer** from your applications menu, or run `fsagent` in a terminal. The `.tar.gz` also works anywhere.
+Then start **Perigee Files** from your applications menu, or run `perigee` in a terminal. The `.tar.gz` also works anywhere.
 
 The first time it runs, the agent opens its **dashboard** in your browser and shows a pairing code.
 
 ## 2. Install the app
 
-Download `fs-browser-<version>.apk` from the same release. Open it on your phone and allow "install from this source" when asked.
+Download `perigee-<version>.apk` from the same release. Open it on your phone and allow "install from this source" when asked.
 
 ## 3. Pair your phone
 
@@ -52,11 +52,11 @@ Both are off until you turn them on, and the dashboard explains the trade-off fi
 
 ## Start on login
 
-Dashboard, **Settings**, **Start when I sign in**, or run `fsagent -autostart on`. The agent then starts quietly and never opens a window by itself. Open the dashboard any time with `fsagent -ui`, or from the app menu.
+Dashboard, **Settings**, **Start when I sign in**, or run `perigee-autostart on`. The agent then starts quietly and never opens a window by itself. Open the dashboard any time with `perigee-ui`, or from the app menu.
 
 ## If something doesn't work
 
-Open the dashboard, then **Help → Check my setup**. It tests your settings, folders, network, ports and firewall, and says what to fix. From a terminal: `fsagent -doctor`. See the [FAQ](FAQ.md).
+Open the dashboard, then **Help → Check my setup**. It tests your settings, folders, network, ports and firewall, and says what to fix. From a terminal: `perigee-doctor`. See the [FAQ](FAQ.md).
 
 ## Command line
 
@@ -71,7 +71,7 @@ Open the dashboard, then **Help → Check my setup**. It tests your settings, fo
 | `-background` | Run with no window |
 | `-config <file>` | Use another settings file |
 | `-host <ip>` | Use this address in the pairing code |
-| `-no-mdns`, `-no-web`, `-no-open`, `-no-qr`, `-quiet`, `-no-color`, `-verbose` | Fine tuning (see `fsagent -h`) |
+| `-no-mdns`, `-no-web`, `-no-open`, `-no-qr`, `-quiet`, `-no-color`, `-verbose` | Fine tuning (see `perigee-h`) |
 | `-rotate-token` | Replace the old shared token (phones paired with a code are unaffected) |
 | `-version` | Show the version |
 
@@ -79,14 +79,14 @@ Open the dashboard, then **Help → Check my setup**. It tests your settings, fo
 
 | What | Where |
 | --- | --- |
-| Settings | `config.json` in the OS config folder: `~/.config/fs-indexer/` (Linux), `%AppData%\fs-indexer\` (Windows), `~/Library/Application Support/fs-indexer/` (macOS) |
+| Settings | `config.json` in the OS config folder: `~/.config/perigee/` (Linux), `%AppData%\perigee\` (Windows), `~/Library/Application Support/perigee/` (macOS) |
 | Paired phones | `devices.json`, next to the settings (only hashes of keys are kept) |
 | Log | `agent.log`, next to the settings (it rotates at 2 MB and keeps 3 older files) |
 
 ## Uninstall
 
-1. Dashboard, **Settings**: switch **Start when I sign in** off (or run `fsagent -autostart off`).
-2. Quit the agent (**Quit the agent** in the dashboard, or `fsagent -stop`).
-3. Remove the program: delete the app (Windows/macOS), or `sudo dnf remove fsagent` / `sudo apt remove fsagent`.
+1. Dashboard, **Settings**: switch **Start when I sign in** off (or run `perigee-autostart off`).
+2. Quit the agent (**Quit the agent** in the dashboard, or `perigee-stop`).
+3. Remove the program: delete the app (Windows/macOS), or `sudo dnf remove perigee` / `sudo apt remove perigee`.
 4. Delete the settings folder shown above if you want everything gone.
 5. On the phone: in the app, **Settings → Unpair this PC**, then uninstall the app. Files you saved in Downloads stay until you delete them.

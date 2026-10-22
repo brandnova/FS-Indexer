@@ -9,7 +9,7 @@ import (
 )
 
 // displayName is what people see. Change it together with the project name.
-const displayName = "FS Indexer"
+const displayName = "Perigee Files"
 
 // startupInfo is everything the banner needs besides the settings.
 type startupInfo struct {

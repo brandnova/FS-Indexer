@@ -11,10 +11,10 @@
     "#1": {
       "0409": {
         "identity": {
-          "name": "FS Indexer",
+          "name": "Perigee Files",
           "version": "0.1.0.0"
         },
-        "description": "FS Indexer & Remote Browser",
+        "description": "Perigee Files: PC File Search",
         "minimum-os": "win7",
         "execution-level": "as invoker",
         "ui-access": false,
@@ -41,16 +41,16 @@
         },
         "info": {
           "0409": {
-            "Comments": "FS Indexer & Remote Browser",
+            "Comments": "Perigee Files: PC File Search",
             "CompanyName": "BRAND NOVA",
-            "FileDescription": "FS Indexer & Remote Browser",
+            "FileDescription": "Perigee Files: PC File Search",
             "FileVersion": "0.1.0.0",
-            "InternalName": "fsagent",
+            "InternalName": "perigee",
             "LegalCopyright": "Made by Brand Nova. MIT License.",
             "LegalTrademarks": "",
-            "OriginalFilename": "fsagent.exe",
+            "OriginalFilename": "perigee.exe",
             "PrivateBuild": "",
-            "ProductName": "FS Indexer",
+            "ProductName": "Perigee Files",
             "ProductVersion": "0.1.0.0",
             "SpecialBuild": ""
           }

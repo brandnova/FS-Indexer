@@ -14,7 +14,7 @@ import (
 
 // appDirName is the folder created inside the OS config directory.
 // Change it together with the project name.
-const appDirName = "fs-indexer"
+const appDirName = "perigee"
 
 // Root is one folder to index. Label becomes the first segment of every
 // path under it (e.g. "Documents/cv/resume.pdf").
@@ -79,7 +79,7 @@ func (c *Config) enabledRoots() []Root {
 
 // ---------- where the config lives ----------
 
-// DefaultConfigPath is <user config dir>/fs-indexer/config.json:
+// DefaultConfigPath is <user config dir>/perigee/config.json:
 // ~/.config on Linux, %AppData% on Windows, ~/Library/Application Support on macOS.
 func DefaultConfigPath() string {
 	dir, err := os.UserConfigDir()

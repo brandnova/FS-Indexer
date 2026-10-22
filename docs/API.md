@@ -98,7 +98,7 @@ Saves one file into the drop folder. The body is the file's raw bytes. `X-File-N
 
 ## Discovery
 
-The agent announces itself on the local network with mDNS (service `_fs-sync._tcp`) so the app can find a paired PC again after its address changes. The app matches the device id from `/ping`. Pairing always needs the code.
+The agent announces itself on the local network with mDNS (service `_perigee._tcp`) so the app can find a paired PC again after its address changes. The app matches the device id from `/ping`. Pairing always needs the code.
 
 ## Settings keys (for reference)
 

@@ -1,4 +1,4 @@
-module fsindexer/agent
+module perigee/agent
 
 go 1.26.7
 

@@ -1,15 +1,15 @@
 # Privacy policy
 
-**FS Indexer** (the agent for your computer, and the app for your phone)
+**Perigee Files** (the agent for your computer, and the app for your phone)
 Last updated: 20 October 2026
 
 ## The short version
 
-**We don't collect your data.** FS Indexer has no accounts, no ads and no analytics, and nothing is sent to us. Your file list and your files stay on your own PC and phone. The only traffic is between your two devices, over your own network.
+**We don't collect your data.** Perigee Files has no accounts, no ads and no analytics, and nothing is sent to us. Your file list and your files stay on your own PC and phone. The only traffic is between your two devices, over your own network.
 
 ## Who is responsible
 
-FS Indexer is published by **Brand Nova** ([brandnova.pythonanywhere.com](https://brandnova.pythonanywhere.com)). Contact: **brandnova.dev@gmail.com**, or open an issue at [github.com/brandnova/FS-Indexer/issues](https://github.com/brandnova/FS-Indexer/issues).
+Perigee Files is published by **Brand Nova** ([brandnova.pythonanywhere.com](https://brandnova.pythonanywhere.com)). Contact: **brandnova.dev@gmail.com**, or open an issue at [github.com/brandnova/perigee-files/issues](https://github.com/brandnova/perigee-files/issues).
 
 ## What the agent (on your PC) uses
 
@@ -60,7 +60,7 @@ The app doesn't knowingly collect anything from anyone, children included.
 
 ## Open source
 
-The code is public at [github.com/brandnova/FS-Indexer](https://github.com/brandnova/FS-Indexer), so you can check any of this.
+The code is public at [github.com/brandnova/perigee-files](https://github.com/brandnova/perigee-files), so you can check any of this.
 
 ## Changes
 
@@ -68,4 +68,4 @@ If this policy changes, the new version will be published here with a new date, 
 
 ## Contact
 
-**brandnova.dev@gmail.com** · [GitHub issues](https://github.com/brandnova/FS-Indexer/issues)
+**brandnova.dev@gmail.com** · [GitHub issues](https://github.com/brandnova/perigee-files/issues)

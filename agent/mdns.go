@@ -7,13 +7,13 @@ import (
 )
 
 // Service type the phone scans for.
-const mdnsService = "_fs-sync._tcp"
+const mdnsService = "_perigee._tcp"
 
 // StartMDNS advertises the agent on the local network. The TXT record carries
 // identity only (never the token): discovery shows that a PC exists, pairing
 // proves you're allowed to use it.
 func StartMDNS(cfg *Config, host string) (*zeroconf.Server, error) {
-	instance := "fs-sync-" + shortID(cfg.DeviceID)
+	instance := "perigee-" + shortID(cfg.DeviceID)
 	txt := []string{"v=1", "id=" + cfg.DeviceID, "name=" + cfg.DeviceName}
 	return zeroconf.Register(instance, mdnsService, "local.", cfg.Port, txt, ifacesFor(host))
 }

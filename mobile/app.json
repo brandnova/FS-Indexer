@@ -18,7 +18,7 @@
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Connect to your PC on the local network to sync its file index.",
         "NSBonjourServices": [
-          "_fs-sync._tcp"
+          "_perigee._tcp"
         ],
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true

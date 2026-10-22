@@ -5,17 +5,18 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 command -v go-licenses >/dev/null || { echo "FAIL: install go-licenses first (see the comment at the top)"; exit 1; }
+mod="$(cd agent && go list -m)" # the project's own module is not a third party
 
 {
   echo "# Third-party notices"
   echo
-  echo "FS Indexer is MIT licensed. It includes the open-source components below, each under its own licence."
+  echo "Perigee Files is MIT licensed. It includes the open-source components below, each under its own licence."
   echo
   echo "## Agent (Go modules)"
   echo
   echo "| Module | Version | Licence | Licence text |"
   echo "| --- | --- | --- | --- |"
-  (cd agent && go-licenses report ./... --template ../scripts/licenses.tmpl 2>/dev/null)
+  (cd agent && go-licenses report ./... --template ../scripts/licenses.tmpl 2>/dev/null | grep -v "^| ${mod} " || true)
   echo
   echo "## App (npm packages)"
   echo

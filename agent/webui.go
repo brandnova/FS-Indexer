@@ -498,7 +498,7 @@ func (ui *WebUI) handleInternalLaunch(rw http.ResponseWriter, r *http.Request) {
 	writeJSON(rw, http.StatusOK, map[string]string{"url": ui.LoginURL(2*time.Minute, "")})
 }
 
-// handleInternalQuit is what `fsagent -stop` calls.
+// handleInternalQuit is what `perigee -stop` calls.
 func (ui *WebUI) handleInternalQuit(rw http.ResponseWriter, r *http.Request) {
 	if !ui.secretOK(r) {
 		writeJSON(rw, http.StatusForbidden, map[string]string{"error": "forbidden"})

@@ -32,8 +32,8 @@ else
 fi
 
 # Packaging inputs: GoReleaser reads these while building the Linux packages and the macOS app.
-[[ -f branding/icon-256.png && -f branding/icon-512.png ]] || fail "branding/icon-256.png and branding/icon-512.png are missing (the Linux packages need them)"
-[[ -f packaging/linux/fsagent.desktop ]] || fail "packaging/linux/fsagent.desktop is missing"
+for s in 48 128 256 512; do [[ -f "branding/icon-$s.png" ]] || fail "branding/icon-$s.png is missing (the Linux packages need it)"; done
+[[ -f packaging/linux/perigee.desktop ]] || fail "packaging/linux/perigee.desktop is missing"
 [[ -f branding/AppIcon.icns ]] || echo "WARN: branding/AppIcon.icns is missing, so the macOS app will have no icon (make it with png2icns)"
 if [[ -f agent/winres/winres.json ]] && ! grep -Eq "\"(file|product)_version\": *\"${base//./\\.}\.0\"" agent/winres/winres.json; then
   echo "WARN: agent/winres/winres.json doesn't say ${base}.0, so the Windows file version will be out of date (edit it, run 'go-winres make' in agent/, commit)"

@@ -1,11 +1,19 @@
 #!/usr/bin/env sh
-# Wraps a macOS agent binary in "FS Indexer.app" and zips it into dist/.
-# GoReleaser calls this after every build (see .goreleaser.yaml); it does nothing for other systems.
-# Usage: make-macapp.sh <binary> <os> <arch> <version>
+# Wraps a macOS binary in "Perigee Files.app" and zips it into dist/.
+# GoReleaser runs this by itself after each build (see .goreleaser.yaml). You don't need to run it by hand:
+#   goreleaser release --snapshot --clean      builds everything, including the app zips, into dist/
+# Usage (for testing): make-macapp.sh <binary> <os> <arch> <version>
 set -eu
 
-APP_NAME="FS Indexer"   # change together with the project name
-BUNDLE_ID="com.brandnova.fsindexer.agent"
+if [ "$#" -lt 4 ]; then
+  echo "This script is run by GoReleaser, with four arguments: <binary> <os> <arch> <version>."
+  echo "To build the macOS app, run:  goreleaser release --snapshot --clean"
+  exit 2
+fi
+
+APP_NAME="Perigee Files"
+ZIP_NAME="Perigee-Files"
+BUNDLE_ID="com.brandnova.perigee.agent"
 
 bin="$1"; os="$2"; arch="$3"; version="$4"
 [ "$os" = "darwin" ] || exit 0
@@ -19,13 +27,13 @@ work="$(mktemp -d)"
 app="$work/$APP_NAME.app"
 
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources" dist
-cp "$bin" "$app/Contents/MacOS/fsagent"
-chmod 755 "$app/Contents/MacOS/fsagent"
+cp "$bin" "$app/Contents/MacOS/perigee"
+chmod 755 "$app/Contents/MacOS/perigee"
 
 # What a double-click runs: open the dashboard, starting the agent in the background first if needed.
 cat > "$app/Contents/MacOS/launcher" <<'LAUNCHER'
 #!/bin/sh
-exec "$(dirname "$0")/fsagent" -ui
+exec "$(dirname "$0")/perigee" -ui
 LAUNCHER
 chmod 755 "$app/Contents/MacOS/launcher"
 
@@ -56,7 +64,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-out="$root/dist/FS-Indexer_${version}_macOS_${arch}.app.zip"
+out="$root/dist/${ZIP_NAME}_${version}_macOS_${arch}.app.zip"
 rm -f "$out"
 (cd "$work" && zip -qry "$out" "$APP_NAME.app")
 rm -rf "$work"
