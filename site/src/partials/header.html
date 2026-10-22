@@ -1,0 +1,21 @@
+<header class="site-header" :class="{ scrolled: scrolled || open }">
+  <div class="container bar">
+    <a class="brand" href="{{homeUrl}}" aria-label="{{name}}: home">
+      <img src="{{root}}assets/logo-agent.png" alt="" width="36" height="36">
+      <span>{{name}}</span>
+    </a>
+    <button class="menu-btn" type="button" @click="open = !open" :aria-expanded="open" aria-controls="site-nav" aria-label="Menu">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path x-show="!open" d="M4 7h16M4 12h16M4 17h16"/><path x-show="open" d="M6 6l12 12M18 6L6 18" style="display:none"/>
+      </svg>
+    </button>
+    <nav id="site-nav" class="nav" :class="{ open }" aria-label="Main">
+      <a href="{{home}}#how" :class="{ active: active === 'how' }" @click="close()">How it works</a>
+      <a href="{{home}}#features" :class="{ active: active === 'features' }" @click="close()">Features</a>
+      <a href="{{home}}#privacy" :class="{ active: active === 'privacy' }" @click="close()">Privacy</a>
+      <a href="{{home}}#screens" :class="{ active: active === 'screens' }" @click="close()">Screenshots</a>
+      <a href="{{home}}#faq" :class="{ active: active === 'faq' }" @click="close()">FAQ</a>
+      <a class="btn btn-primary btn-small" href="{{home}}#download" @click="close()">Download</a>
+    </nav>
+  </div>
+</header>

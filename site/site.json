@@ -1,0 +1,14 @@
+{
+  "name": "Perigee Files",
+  "short": "Perigee",
+  "tagline": "Your PC's files, in close orbit.",
+  "description": "Search and browse your computer's files from your phone, even when the computer is asleep. Free, private and open source. No accounts, no cloud.",
+  "repo": "brandnova/perigee-files",
+  "siteUrl": "https://brandnova.github.io/perigee-files/",
+  "email": "brandnova.dev@gmail.com",
+  "brandName": "Brand Nova",
+  "brandUrl": "https://brandnova.pythonanywhere.com",
+  "playStoreUrl": "",
+  "appStoreUrl": "",
+  "version": "0.1.0-rc4"
+}

@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{name}}: search your PC's files from your phone</title>
+  <meta name="description" content="{{description}}">
+  <link rel="canonical" href="{{siteUrl}}">
+  <meta name="theme-color" content="#0b1230">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{{name}}: {{tagline}}">
+  <meta property="og:description" content="{{description}}">
+  <meta property="og:url" content="{{siteUrl}}">
+  <meta property="og:image" content="{{ogImage}}">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" type="image/png" href="{{root}}assets/favicon.png">
+  <link rel="preload" href="{{root}}assets/fonts/nunito.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{root}}assets/style.css">
+  <script type="application/ld+json">{{jsonld}}</script>
+  <script type="application/json" id="site-config">{{configJson}}</script>
+  <script src="{{root}}assets/app.js" defer></script>
+  <script src="{{root}}assets/vendor/alpine.min.js" defer></script>
+</head>
+<body x-data="nav">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- icons, drawn once -->
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 8.3-8 9-4.8-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></symbol>
+    <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v.01M14 21h3M21 17v4"/></symbol>
+    <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="M8 8l-5 4 5 4M16 8l5 4-5 4M14 5l-4 14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  </svg>
+
+  {{header}}
+
+  <main id="main">
+
+    <!-- ================= Hero ================= -->
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero-grid">
+        <div class="hero-text">
+          <p class="eyebrow">Free · Private · Open source</p>
+          <h1 id="hero-title">Your PC's files, in <span class="accent">close orbit.</span></h1>
+          <p class="lead">Search and browse your computer's files from your phone, even when the computer is asleep. No accounts and no cloud: just your two devices on your own network.</p>
+          <div class="actions">
+            <a class="btn btn-primary" href="#download"><span x-text="'Download for ' + $store.rel.osLabel">Download</span></a>
+            <a class="btn btn-ghost" href="#how">See how it works</a>
+          </div>
+          <p class="fine">
+            <span x-text="$store.rel.tag">v{{version}}</span>
+            <span x-show="$store.rel.isPre"> · pre-release</span> · MIT licensed · for Windows, macOS, Linux and Android
+          </p>
+        </div>
+
+        <figure class="orbit-wrap">
+          <svg class="orbit" viewBox="0 0 560 440" role="img" aria-labelledby="orbit-title orbit-desc"
+               x-init="if (matchMedia('(prefers-reduced-motion: reduce)').matches) $el.pauseAnimations()">
+            <title id="orbit-title">A phone orbiting a computer</title>
+            <desc id="orbit-desc">A phone travels around a laptop on an oval path. The point where it passes closest to the laptop is marked perigee.</desc>
+            <defs>
+              <linearGradient id="amber" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd166"/><stop offset="1" stop-color="#f5a524"/></linearGradient>
+              <radialGradient id="glow"><stop offset="0" stop-color="#2a5fd6" stop-opacity=".6"/><stop offset="1" stop-color="#2a5fd6" stop-opacity="0"/></radialGradient>
+            </defs>
+            <circle cx="443" cy="179" r="130" fill="url(#glow)"/>
+            <g transform="rotate(-14 270 220)">
+              <ellipse cx="270" cy="220" rx="215" ry="120" fill="none" stroke="url(#amber)" stroke-width="3" stroke-dasharray="1 11" stroke-linecap="round"/>
+              <g>
+                <rect x="-11" y="-19" width="22" height="38" rx="5" fill="#0b1230" stroke="#fff" stroke-width="2"/>
+                <rect x="-7" y="-14" width="14" height="24" rx="2" fill="#2a5fd6"/>
+                <circle cx="0" cy="14.5" r="1.6" fill="#fff"/>
+                <animateMotion dur="22s" repeatCount="indefinite" rotate="0" path="M 55 220 a 215 120 0 1 0 430 0 a 215 120 0 1 0 -430 0"/>
+              </g>
+            </g>
+            <g transform="translate(443 179) scale(.7)">
+              <rect x="-34" y="-24" width="68" height="44" rx="6" fill="#0b1230" stroke="#fff" stroke-width="3"/>
+              <rect x="-28" y="-18" width="56" height="32" rx="2" fill="#2a5fd6"/>
+              <path d="M-46 26h92l-9 9h-74z" fill="#fff"/>
+            </g>
+            <circle cx="479" cy="170" r="4.5" fill="#f5a524"/>
+            <path d="M479 166l-8-52" stroke="#ffd166" stroke-width="1.5" stroke-dasharray="3 4"/>
+            <text x="470" y="96" text-anchor="middle" class="orbit-label">perigee</text>
+            <text x="470" y="114" text-anchor="middle" class="orbit-sub">the closest point</text>
+          </svg>
+          <figcaption>Perigee: where an orbit comes closest. That's where your files should be.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ================= How it works ================= -->
+    <section id="how" class="section" aria-labelledby="how-title" x-data="how" @mouseenter="hover = true" @mouseleave="hover = false">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">How it works</p>
+          <h2 id="how-title">Three steps, once.</h2>
+          <p class="muted">A small program on your PC makes a list of the folders you choose. The app copies that list to your phone. That's the whole idea.</p>
+        </div>
+
+        <div class="how-grid" :class="{ manual }">
+          <ol class="steps-list">
+            <template x-for="(s, i) in steps" :key="i">
+              <li>
+                <button type="button" class="step-btn" :aria-current="step === i ? 'step' : false" @click="go(i)">
+                  <span class="step-num" x-text="i + 1"></span>
+                  <span><strong x-text="s.title"></strong><span class="muted block" x-text="s.text"></span></span>
+                </button>
+              </li>
+            </template>
+            <noscript>
+              <li><strong>1. Install on your PC.</strong> Choose the folders to share.</li>
+              <li><strong>2. Scan once to pair.</strong> Open the app and scan the QR code.</li>
+              <li><strong>3. Search from anywhere.</strong> Your phone keeps its own copy of the list.</li>
+            </noscript>
+          </ol>
+
+          <div class="flow-card" aria-live="polite">
+            <svg class="flow" viewBox="0 0 520 250" role="img" aria-label="Your PC and your phone connected over your own network">
+              <g class="node" :class="{ on: step === 0 }" transform="translate(16 56)">
+                <rect class="frame" width="150" height="130" rx="20"/>
+                <rect x="40" y="26" width="70" height="46" rx="6" class="ink"/><rect x="46" y="32" width="58" height="34" rx="2" class="screen"/>
+                <path d="M30 80h90l-9 9H39z" class="ink"/>
+                <text x="75" y="116" text-anchor="middle">Your PC</text>
+              </g>
+              <g class="link" :class="{ on: step === 1 }">
+                <path d="M172 121H348"/>
+                <rect x="224" y="86" width="72" height="72" rx="12" class="qr-box"/>
+                <path d="M236 98h20v20h-20zM264 98h20v20h-20zM236 126h20v20h-20zM264 126h8v8h-8zM276 138h8v8h-8z" class="qr"/>
+                <text x="260" y="186" text-anchor="middle">your own network</text>
+              </g>
+              <g class="node" :class="{ on: step === 2 }" transform="translate(354 44)">
+                <rect class="frame" width="150" height="154" rx="20"/>
+                <rect x="52" y="22" width="46" height="84" rx="9" class="ink"/><rect x="57" y="30" width="36" height="62" rx="3" class="screen"/>
+                <circle cx="75" cy="99" r="2.5" class="dot"/>
+                <text x="75" y="136" text-anchor="middle">Your phone</text>
+              </g>
+            </svg>
+            <p class="flow-note" x-text="steps[step].note"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= Features ================= -->
+    <section id="features" class="section alt" aria-labelledby="features-title">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">Features</p>
+          <h2 id="features-title">Everything you need. Nothing you don't.</h2>
+        </div>
+        <ul class="feature-grid">
+          <li class="card"><svg class="ico"><use href="#i-search"/></svg><h3>Instant search, even offline</h3><p>Your phone keeps its own copy of the file list, so searching by name or folder is immediate and needs no connection.</p></li>
+          <li class="card"><svg class="ico"><use href="#i-layout"/></svg><h3>You choose what's shared</h3><p>Pick the folders, switch any off, add your own skip rules, and test whether a path would be shared.</p></li>
+          <li class="card"><svg class="ico"><use href="#i-lock"/></svg><h3>Secrets are always skipped</h3><p>Passwords, keys, <code>.env</code> files and similar are never listed. Hidden files are off by default.</p></li>
+          <li class="card"><svg class="ico"><use href="#i-download"/></svg><h3>Open and download (optional)</h3><p>Preview, open and save files to your phone, with a download queue. Off until you switch it on.</p></li>
+          <li class="card"><svg class="ico"><use href="#i-upload"/></svg><h3>Send files to your PC (optional)</h3><p>Drop files into one folder you choose, with size and rate limits. Nothing is ever overwritten.</p></li>
+          <li class="card"><svg class="ico"><use href="#i-qr"/></svg><h3>Pair with a QR code</h3><p>Each phone gets its own key and each code works once. Remove a phone any time.</p></li>
+          <li class="card"><svg class="ico"><use href="#i-shield"/></svg><h3>A friendly dashboard</h3><p>Manage folders and phones, and fix problems with <em>Check my setup</em>, which says what's wrong and how to fix it.</p></li>
+          <li class="card"><svg class="ico"><use href="#i-code"/></svg><h3>Free and open source</h3><p>MIT licensed. No ads, no analytics, no accounts. Read every line on GitHub.</p></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ================= Privacy ================= -->
+    <section id="privacy" class="section dark" aria-labelledby="privacy-title">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">Privacy and security</p>
+          <h2 id="privacy-title">Your files stay yours.</h2>
+          <p>Nothing is sent to us or to the cloud. There is no server in the middle: the app talks straight to your PC.</p>
+        </div>
+        <div class="trio">
+          <div><h3>Only names travel</h3><p>By default your phone sees file names, sizes and dates. Contents stay on your PC.</p></div>
+          <div><h3>Off by default</h3><p>Opening files and sending files are separate switches, both off until you turn them on.</p></div>
+          <div><h3>You're in control</h3><p>Per-phone keys, one-time pairing codes, and a button to remove any phone.</p></div>
+        </div>
+        <div class="callout" role="note">
+          <svg class="ico"><use href="#i-shield"/></svg>
+          <div>
+            <strong>Trusted networks only.</strong> The link between your phone and PC isn't encrypted yet, so use it on a network you trust, or link just the two devices with a hotspot. Encrypting it is planned.
+          </div>
+        </div>
+        <p class="actions">
+          <a class="btn btn-ghost" href="{{root}}privacy/">Privacy policy</a>
+          <a class="btn btn-ghost" href="{{root}}docs/security-model/">How it's protected</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= Screenshots ================= -->
+    <section id="screens" class="section" aria-labelledby="screens-title" x-data="gallery">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">Screenshots</p>
+          <h2 id="screens-title">See it in action.</h2>
+        </div>
+        <script type="application/json" id="gallery-data">{{galleryJson}}</script>
+
+        <p class="nojs-only muted">Screenshots are in the <a href="{{repoUrl}}#screenshots">README on GitHub</a>.</p>
+
+        <div x-show="items.length === 0" class="muted" style="display:none">Screenshots are coming soon. See the <a href="{{repoUrl}}">repository</a> in the meantime.</div>
+
+        <div x-show="items.length > 0" style="display:none">
+          <div class="tabs" role="tablist" aria-label="Screenshots">
+            <template x-for="g in groups" :key="g">
+              <button type="button" role="tab" :aria-selected="group === g" @click="group = g" x-text="g === 'agent' ? 'On your PC' : 'On your phone'"></button>
+            </template>
+          </div>
+          <ul class="shots" :class="group">
+            <template x-for="(it, i) in shown" :key="it.src">
+              <li>
+                <button type="button" class="shot" @click="show(i)" :aria-label="'Enlarge: ' + it.caption">
+                  <img :src="it.src" :alt="it.caption" :width="it.w" :height="it.h" loading="lazy">
+                  <span x-text="it.caption"></span>
+                </button>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <dialog class="lightbox" x-ref="dialog" aria-label="Screenshot viewer"
+                @close="onClose()" @click="if ($event.target === $refs.dialog) close()"
+                @keydown.arrow-left.prevent="step(-1)" @keydown.arrow-right.prevent="step(1)">
+          <template x-if="current">
+            <figure>
+              <img :src="current.src" :alt="current.caption" :width="current.w" :height="current.h">
+              <figcaption><span x-text="current.caption"></span> <span class="muted" x-text="'(' + (index + 1) + ' of ' + shown.length + ')'"></span></figcaption>
+            </figure>
+          </template>
+          <div class="lb-controls">
+            <button type="button" @click="step(-1)" aria-label="Previous"><svg class="ico"><use href="#i-left"/></svg></button>
+            <button type="button" @click="step(1)" aria-label="Next"><svg class="ico"><use href="#i-right"/></svg></button>
+            <button type="button" @click="close()" aria-label="Close"><svg class="ico"><use href="#i-x"/></svg></button>
+          </div>
+        </dialog>
+      </div>
+    </section>
+
+    <!-- ================= Download ================= -->
+    <section id="download" class="section alt" aria-labelledby="download-title" x-data="tabs">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">Download</p>
+          <h2 id="download-title">Get {{short}} for your devices.</h2>
+          <p class="muted">Install the program on your PC and the app on your phone, from the same release.</p>
+        </div>
+
+        <p class="release-line" aria-live="polite">
+          <span x-show="$store.rel.state === 'loading'">Looking up the latest release...</span>
+          <span x-show="$store.rel.state === 'error'" style="display:none">Couldn't reach GitHub just now. Every file is on the <a href="{{releasesUrl}}">releases page</a>.</span>
+          <span x-show="$store.rel.state === 'ready'" style="display:none">
+            Latest: <strong x-text="$store.rel.tag"></strong><span x-show="$store.rel.isPre"> (pre-release)</span> · <span x-text="$store.rel.date"></span> ·
+            <a :href="$store.rel.notesUrl" href="{{releasesUrl}}">Release notes</a>
+          </span>
+        </p>
+
+        <div class="tabs" role="tablist" aria-label="Choose your system" @keydown="key($event)">
+          <template x-for="t in list" :key="t.id">
+            <button type="button" role="tab" :id="'tab-' + t.id" :aria-controls="'panel-' + t.id" :aria-selected="tab === t.id" :tabindex="tab === t.id ? 0 : -1" @click="tab = t.id" x-text="t.label"></button>
+          </template>
+          <noscript><span class="muted">Windows · macOS · Linux · Android</span></noscript>
+        </div>
+
+        <div class="panels">
+          <div role="tabpanel" id="panel-windows" aria-labelledby="tab-windows" x-show="tab === 'windows'">
+            <h3>Windows</h3>
+            <p class="actions">
+              <a class="btn btn-primary" :href="$store.rel.url('winX64')" href="{{releasesUrl}}">Download for Windows <small x-text="$store.rel.size('winX64')"></small></a>
+              <a class="btn btn-ghost" :href="$store.rel.url('winArm')" href="{{releasesUrl}}">ARM64</a>
+            </p>
+            <ol class="mini-steps">
+              <li>Unzip it and double-click <code>perigee.exe</code>. The dashboard opens in your browser.</li>
+              <li>If SmartScreen warns you, choose <strong>More info</strong>, then <strong>Run anyway</strong>. The download isn't code-signed yet.</li>
+              <li>Allow the firewall prompt on <strong>Private</strong> networks.</li>
+            </ol>
+          </div>
+
+          <div role="tabpanel" id="panel-macos" aria-labelledby="tab-macos" x-show="tab === 'macos'" style="display:none">
+            <h3>macOS</h3>
+            <p class="actions">
+              <a class="btn btn-primary" :href="$store.rel.url('macArm')" href="{{releasesUrl}}">Apple silicon <small x-text="$store.rel.size('macArm')"></small></a>
+              <a class="btn btn-ghost" :href="$store.rel.url('macIntel')" href="{{releasesUrl}}">Intel</a>
+            </p>
+            <ol class="mini-steps">
+              <li>Unzip it, then right-click <strong>Perigee Files</strong> and choose <strong>Open</strong>. The app isn't signed yet.</li>
+              <li>If macOS still blocks it: System Settings, Privacy &amp; Security, <strong>Open Anyway</strong>.</li>
+              <li>Allow the firewall prompt when it appears.</li>
+            </ol>
+          </div>
+
+          <div role="tabpanel" id="panel-linux" aria-labelledby="tab-linux" x-show="tab === 'linux'" style="display:none">
+            <h3>Linux</h3>
+            <p class="actions">
+              <a class="btn btn-primary" :href="$store.rel.url('rpm')" href="{{releasesUrl}}">.rpm <small x-text="$store.rel.size('rpm')"></small></a>
+              <a class="btn btn-primary" :href="$store.rel.url('deb')" href="{{releasesUrl}}">.deb <small x-text="$store.rel.size('deb')"></small></a>
+              <a class="btn btn-ghost" :href="$store.rel.url('tgz')" href="{{releasesUrl}}">.tar.gz</a>
+            </p>
+            <p class="muted small">Fedora or Red Hat:</p>
+            <div class="cmd" x-data='copy("sudo dnf install ./perigee_*_linux_amd64.rpm")'><code>sudo dnf install ./perigee_*_linux_amd64.rpm</code><button type="button" @click="run()" x-text="done ? 'Copied' : 'Copy'">Copy</button></div>
+            <p class="muted small">Debian or Ubuntu:</p>
+            <div class="cmd" x-data='copy("sudo apt install ./perigee_*_linux_amd64.deb")'><code>sudo apt install ./perigee_*_linux_amd64.deb</code><button type="button" @click="run()" x-text="done ? 'Copied' : 'Copy'">Copy</button></div>
+            <p class="muted small">Then start <strong>Perigee Files</strong> from your menu. ARM64 packages are on the releases page.</p>
+          </div>
+
+          <div role="tabpanel" id="panel-android" aria-labelledby="tab-android" x-show="tab === 'android'" style="display:none">
+            <h3>Android</h3>
+            <p class="actions">
+              <a class="btn btn-primary" :href="$store.rel.url('apk')" href="{{releasesUrl}}">Download the APK <small x-text="$store.rel.size('apk')"></small></a>
+              <template x-if="cfg.playStoreUrl"><a class="btn btn-ghost" :href="cfg.playStoreUrl">Get it on Google Play</a></template>
+              <template x-if="!cfg.playStoreUrl"><span class="soon">Google Play: coming soon</span></template>
+            </p>
+            <ol class="mini-steps">
+              <li>Open the downloaded file and allow installs from this source, once.</li>
+              <li>Open <strong>Perigee</strong> and tap <strong>Scan QR code</strong>, then scan the code in the PC dashboard.</li>
+              <li>Tap <strong>Update</strong>. Your files appear.</li>
+            </ol>
+          </div>
+
+          <div role="tabpanel" id="panel-ios" aria-labelledby="tab-ios" x-show="tab === 'ios'" style="display:none">
+            <h3>iPhone</h3>
+            <p>iPhone support is planned. Follow the <a href="{{repoUrl}}">repository</a> or the <a href="{{releasesUrl}}">releases page</a> to hear about it.</p>
+          </div>
+        </div>
+
+        <p class="muted small">
+          Check any download against <a :href="$store.rel.url('sums')" href="{{releasesUrl}}">checksums.txt</a>.
+          All files and release notes are on the <a href="{{releasesUrl}}">releases page</a>. Use the app and the program from the same release.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= FAQ ================= -->
+    <section id="faq" class="section" aria-labelledby="faq-title">
+      <div class="container narrow">
+        <div class="section-head">
+          <p class="eyebrow">FAQ</p>
+          <h2 id="faq-title">Questions, answered.</h2>
+        </div>
+        <div class="faq">
+          <details><summary>Do my files leave my computer?</summary><p>Only the names, sizes and dates of the folders you choose are copied to your phone. File contents stay on your PC unless you switch on "Open and download files" and then open or download one. Nothing is ever sent to us or to the internet.</p></details>
+          <details><summary>Is the connection encrypted?</summary><p>Not yet. Your phone and PC talk over plain HTTP on your own network, so use it on a network you trust, or link just the two devices with a hotspot. Encryption is planned. Opening and sending files are off by default for this reason. <a href="{{root}}docs/security-model/">Read the security model.</a></p></details>
+          <details><summary>Does it work when my PC is asleep?</summary><p>You can still search and browse the list your phone already has. Updating, opening and downloading need the PC awake and the program running.</p></details>
+          <details><summary>Can I use it away from home?</summary><p>Not directly: the program only accepts connections from your local network, on purpose. A VPN that puts your phone on your home network works if you add its range to <code>allowed_networks</code>.</p></details>
+          <details><summary>Why does Windows or macOS warn me about the download?</summary><p>The builds aren't code-signed yet, which makes both systems cautious about any new program. Check the file against <code>checksums.txt</code>, or build it yourself from the open source code.</p></details>
+          <details><summary>My phone can't connect. What now?</summary><p>Open the dashboard, then <strong>Help, Check my setup</strong>. It tests your settings, folders, network and firewall and says what to fix. Make sure both devices are on the same Wi-Fi, and that no VPN is in the way.</p></details>
+          <details><summary>How much does it cost?</summary><p>Nothing. It's free, open source (MIT), with no ads, accounts or analytics.</p></details>
+          <details><summary>How do I report a problem?</summary><p>In the dashboard, <strong>Help, Report a problem</strong> shows exactly what would be shared (your keys and user name are removed) and lets you copy it. Then <a href="{{issuesUrl}}">open an issue</a> or email <a href="mailto:{{email}}">{{email}}</a>.</p></details>
+        </div>
+        <p class="actions"><a class="btn btn-ghost" href="{{root}}docs/faq/">All questions</a> <a class="btn btn-ghost" href="{{root}}docs/getting-started/">Getting started guide</a></p>
+      </div>
+    </section>
+
+    <!-- ================= Final call ================= -->
+    <section class="cta" aria-labelledby="cta-title">
+      <div class="container">
+        <h2 id="cta-title">Bring your files closer.</h2>
+        <p>Install it in a couple of minutes. Pair once. Search from anywhere.</p>
+        <p class="actions">
+          <a class="btn btn-primary" href="#download"><span x-text="'Download for ' + $store.rel.osLabel">Download</span></a>
+          <a class="btn btn-ghost" href="{{repoUrl}}">View on GitHub</a>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  {{footer}}
+</body>
+</html>

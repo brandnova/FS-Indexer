@@ -129,8 +129,8 @@ Must be finished before any feature that serves file contents.
 - [x] Docs organized: README, docs index, getting started, FAQ, security model, security policy, privacy policy, API reference
 - [x] Refresh the screenshots, including the new dashboard (S)
 - [x] Third-party licence notices: the generator is ready (scripts/licenses.sh); run it and review (S)
-- [ ] * Hosted privacy policy and a support contact (the Markdown is written; hosting waits for the name) (S)
-- [ ] * Landing page on GitHub Pages: what it is, how it works, downloads, FAQ, privacy (M)
+- [x] * Hosted privacy policy and a support contact (the Markdown is written; hosting waits for the name) (S)
+- [x] * Landing page on GitHub Pages: what it is, how it works, downloads, FAQ, privacy (M)
 - [x] The app's first-run walkthrough explains the file-access and upload switches in the dashboard (S)
 - [ ] An opt-in "update available" hint in the agent and the app (S, optional)
 - [ ] * Store paperwork: accounts, listing text, screenshots, data-safety and privacy forms (M)
@@ -214,3 +214,4 @@ Good ideas that don't block anything. Pull one into a milestone when it becomes 
 - 2026-10-20: Pre-launch polish. Docs reorganized (README, getting started, FAQ, security model, privacy policy, API reference); downloads queue with a Downloads list and 30-day history; redesigned dashboard; "Report a problem" shows how to send it; first-run walkthrough explains the file-access and upload switches; third-party notices generated; working name chosen (Perigee).
 - 2026-10-21: Renamed to Perigee Files (command `perigee`, app "Perigee"); new agent and app icons; bottom navigation highlight polished; the microphone permission removed; docs and repository renamed.
 - 2026-10-22: Rename pass finished: the discovery service is now `_perigee._tcp`, the dashboard's saved settings use `perigee.*` keys, icons replaced everywhere (agent, Windows, macOS, Linux, app, adaptive, store), macOS app script and release check updated, screenshot plan and README screenshots section prepared.
+- 2026-10-22: Website: a landing page with an orbit-themed hero, a "how it works" stepper, live download links from the latest GitHub release, a screenshot gallery and FAQ, plus the docs and the privacy policy rendered as pages, deployed to GitHub Pages by a workflow.

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{title}} · {{name}}</title>
+  <meta name="description" content="{{title}} for {{name}}: {{description}}">
+  <meta name="theme-color" content="#0b1230">
+  <link rel="icon" type="image/png" href="{{root}}assets/favicon.png">
+  <link rel="preload" href="{{root}}assets/fonts/nunito.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{root}}assets/style.css">
+  <script type="application/json" id="site-config">{{configJson}}</script>
+  <script src="{{root}}assets/app.js" defer></script>
+  <script src="{{root}}assets/vendor/alpine.min.js" defer></script>
+</head>
+<body x-data="nav">
+  <a class="skip-link" href="#main">Skip to content</a>
+  {{header}}
+  <main id="main" class="doc">
+    <div class="container doc-grid">
+      <nav class="doc-nav" aria-label="Documentation"><h2>Docs</h2><ul>{{docNav}}</ul></nav>
+      <article class="prose">{{content}}</article>
+    </div>
+  </main>
+  {{footer}}
+</body>
+</html>

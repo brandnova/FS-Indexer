@@ -46,6 +46,10 @@ yarn-error.*
 # TypeScript
 *.tsbuildinfo
 
+# Site
+/site/node_modules
+/site/_site
+
 # Custom
 NEXT.md
 RELEASING.md
