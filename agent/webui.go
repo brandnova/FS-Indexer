@@ -228,6 +228,10 @@ func (ui *WebUI) Handler() http.Handler {
 	mux.HandleFunc("POST /api/uploads/open", ui.api(ui.handleUploadsOpen))
 	mux.HandleFunc("POST /api/fs/mkdir", ui.api(ui.handleMkdir))
 
+	mux.HandleFunc("GET /api/update", ui.api(ui.handleUpdate))
+	mux.HandleFunc("POST /api/update", ui.api(ui.handleUpdateSave))
+	mux.HandleFunc("POST /api/update/check", ui.api(ui.handleUpdateCheck))
+
 	mux.HandleFunc("POST /internal/launch", ui.handleInternalLaunch)
 	mux.HandleFunc("POST /internal/quit", ui.handleInternalQuit)
 	return ui.guard(mux)
@@ -388,6 +392,9 @@ type statusResponse struct {
 	Phones        int  `json:"phones"`
 	PhonePort     int  `json:"phone_port"`
 	DashboardPort int  `json:"dashboard_port"`
+	UpdateLatest string `json:"update_latest"`
+	UpdateURL    string `json:"update_url"`
+	UpdateNewer  bool   `json:"update_newer"`
 	UptimeSeconds int64        `json:"uptime_seconds"`
 	Folders       []folderStat `json:"folders"`
 	Events        []Event      `json:"events"`
@@ -444,6 +451,8 @@ func (ui *WebUI) handleStatus(rw http.ResponseWriter, r *http.Request, _ *sessio
 		indexedAt = at.Unix()
 	}
 
+	up := updates.Status()
+
 	writeJSON(rw, http.StatusOK, statusResponse{
 		Name:          cfg.DeviceName,
 		Version:       versionLabel(),
@@ -461,6 +470,9 @@ func (ui *WebUI) handleStatus(rw http.ResponseWriter, r *http.Request, _ *sessio
 		Phones:        ui.opts.Devices.Count(),
 		PhonePort:     cfg.Port,
 		DashboardPort: ui.port,
+		UpdateLatest:  up.Latest,
+		UpdateURL:     up.URL,
+		UpdateNewer:   up.Newer,
 		UptimeSeconds: int64(time.Since(ui.started).Seconds()),
 		Folders:       folders,
 		Events:        ui.opts.Events.Recent(),

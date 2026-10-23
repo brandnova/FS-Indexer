@@ -5,7 +5,7 @@ Last updated: 20 October 2026
 
 ## The short version
 
-**We don't collect your data.** Perigee Files has no accounts, no ads and no analytics, and nothing is sent to us. Your file list and your files stay on your own PC and phone. The only traffic is between your two devices, over your own network.
+**We don't collect your data.** Perigee Files has no accounts, no ads and no analytics, and nothing is sent to us. Your file list and your files stay on your own PC and phone. The only connection to the internet is optional and off by default: if you switch on update checks on your PC, the agent asks GitHub once a day for the newest version number (see below).
 
 ## Who is responsible
 
@@ -34,7 +34,8 @@ All of this stays on your phone. **Unpair this PC** deletes the pairing, the fil
 ## What leaves your devices
 
 - Between your phone and your PC, over **your own network**: the file list, your phone's name, and, if you allow it, files you open or send. This traffic is **not encrypted yet**, so use a network you trust.
-- **Nothing is sent to us or to any third party.** There are no tracking tools, no advertising IDs and no crash-reporting services in the project.
+- **Nothing is sent to us.** There are no tracking tools, no advertising IDs and no crash-reporting services in the project.
+- **Optional update check (off by default).** If you switch on "Check for updates" in the PC dashboard, the agent asks GitHub's public releases list for the newest version number once a day, and shows you if there is one. Only a normal web request is made: GitHub sees your IP address, as any website would, and nothing about your files, your phone or your settings is sent. Your phone is told about the new version by your PC and never contacts GitHub itself.
 - If you press **Report a problem**, a text report is built on your PC. It stays on your screen until **you** copy, download or send it. It removes your keys and your user name.
 
 ## Permissions the app asks for

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1024" height="500" viewBox="0 0 1024 500">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1230"/><stop offset="1" stop-color="#14205a"/></linearGradient>
+    <radialGradient id="glow"><stop offset="0" stop-color="#2a5fd6" stop-opacity=".55"/><stop offset="1" stop-color="#2a5fd6" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1024" height="500" fill="url(#bg)"/>
+  <circle cx="800" cy="250" r="260" fill="url(#glow)"/>
+  <g fill="#fff" opacity=".7">
+    <circle cx="90" cy="60" r="2"/><circle cx="260" cy="430" r="1.6"/><circle cx="470" cy="40" r="2.2"/>
+    <circle cx="600" cy="460" r="1.6"/><circle cx="940" cy="70" r="2"/><circle cx="980" cy="420" r="1.8"/>
+  </g>
+  <ellipse cx="800" cy="250" rx="215" ry="95" fill="none" stroke="#f5a524" stroke-width="3" stroke-dasharray="2 12" stroke-linecap="round" transform="rotate(-14 800 250)"/>
+  <image href="../logo-client.png" xlink:href="../logo-client.png" x="690" y="140" width="220" height="220"/>
+  <g font-family="Nunito, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+    <text x="64" y="215" font-size="74" font-weight="800" fill="#fff">Perigee Files</text>
+    <text x="66" y="272" font-size="32" font-weight="700" fill="#f5a524">Search your PC's files from your phone.</text>
+    <text x="66" y="330" font-size="24" fill="#cfd8f5">Private · Free · Open source · No cloud</text>
+  </g>
+</svg>

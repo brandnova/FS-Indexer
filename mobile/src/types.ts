@@ -46,4 +46,5 @@ export interface PingResponse {
   uploads?: boolean; // whether the PC accepts files from this phone (absent on older agents)
   upload_max_mb?: number; // the largest file the PC accepts
   upload_folder?: string; // the drop folder's name (not its path)
+  latest_version?: string; // the newest release, when the PC's update check is on and it is newer than the PC's version
 }

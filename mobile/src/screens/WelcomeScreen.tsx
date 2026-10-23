@@ -32,7 +32,7 @@ const PAGES: Page[] = [
   bullets: [
     { ok: true, text: 'Shares file names, sizes and dates' },
     { ok: false, text: "Never shares what's inside your files unless you allow it" },
-    { ok: false, text: 'Nothing goes to the internet' },
+    { ok: false, text: 'Your files never go to the internet' },
   ],
   more: true,
 },

@@ -13,6 +13,7 @@ import { platform } from '../platform';
 import { useSession } from '../session';
 import type { ThemeMode } from '../settings';
 import { BRAND } from '../brand';
+import { isNewer } from '../version';
 import { ActionRow, Button, Card, SegmentedControl, StatusChip, Text, useTheme, useThemedStyles, type Palette } from '../ui';
 
 export default function SettingsScreen({ onUnpaired }: { onUnpaired: () => void }) {
@@ -25,6 +26,8 @@ export default function SettingsScreen({ onUnpaired }: { onUnpaired: () => void 
   const dl = summarize(downloads);
   const online = s.remote !== null;
   const demo = s.pairing.demo === true;
+  const latestVersion = s.remote?.latest_version;
+  const updateAvailable = !demo && Boolean(latestVersion) && isNewer(latestVersion as string, Constants.expoConfig?.version ?? '0.0.0');
 
   const downloadsSubtitle = dl.running
   ? `${dl.active + dl.queued} in progress · ${dl.done} saved`
@@ -165,6 +168,14 @@ export default function SettingsScreen({ onUnpaired }: { onUnpaired: () => void 
     subtitle="What it is and what it shares"
     onPress={openAgentInfo}
     />
+    {updateAvailable ? (
+      <ActionRow
+        icon={Download}
+        title={`Update available: ${latestVersion}`}
+        subtitle="Get the newest app from your app store or the releases page"
+        onPress={() => void Linking.openURL(BRAND.releasesUrl).catch(() => {})}
+      />
+    ) : null}
     <ActionRow
     icon={Mail}
     title="Contact support"

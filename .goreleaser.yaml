@@ -55,6 +55,34 @@ nfpms:
       - src: branding/icon-512.png
         dst: /usr/share/icons/hicolor/512x512/apps/perigee.png
 
+# macOS and Linux: `brew install brandnova/tap/perigee` (tags like -rc4 are skipped)
+brews:
+  - name: perigee
+    repository:
+      owner: brandnova
+      name: homebrew-tap
+      token: "{{ .Env.PACKAGE_REPOS_TOKEN }}"
+    homepage: https://brandnova.github.io/perigee-files/
+    description: Search and browse your PC's files from your phone, over your own network.
+    license: MIT
+    skip_upload: auto
+    test: |
+      system "#{bin}/perigee", "-version"
+
+# Windows: `scoop bucket add brandnova https://github.com/brandnova/scoop-bucket` then `scoop install perigee`
+scoops:
+  - name: perigee
+    repository:
+      owner: brandnova
+      name: scoop-bucket
+      token: "{{ .Env.PACKAGE_REPOS_TOKEN }}"
+    homepage: https://brandnova.github.io/perigee-files/
+    description: Search and browse your PC's files from your phone, over your own network.
+    license: MIT
+    skip_upload: auto
+    shortcuts:
+      - ["perigee.exe", "Perigee Files"]
+
 checksum:
   name_template: checksums.txt
   extra_files:

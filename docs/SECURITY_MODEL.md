@@ -12,6 +12,7 @@ This page says what Perigee Files protects, how, and where its limits are.
 
 - You use it on a **network you trust**, or a direct hotspot link between just your phone and your PC.
 - Your PC and phone are not already compromised.
+- The only internet traffic is the optional daily update check (off by default), which asks GitHub for a version number and sends nothing else.
 
 ## How it protects you
 

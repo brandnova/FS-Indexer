@@ -103,6 +103,15 @@
             <p><strong>Trusted networks only.</strong> The link to your phone isn't encrypted. Use your home network, or link just the two with a hotspot. <a class="how-link" href="#phones/hotspot">How</a></p>
           </div>
 
+          <div class="callout info update-banner" id="update-banner" role="status" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>
+            <div>
+              <strong>A new version is available</strong>
+              <p id="update-banner-text"></p>
+            </div>
+            <a class="btn tonal sm" id="update-banner-link" href="#" target="_blank" rel="noopener noreferrer">Release notes</a>
+          </div>
+
           <section class="card hero" id="home-hero">
             <div class="hero-icon" id="home-icon"></div>
             <div class="hero-text">
@@ -306,6 +315,13 @@
                 <label class="switch"><input type="checkbox" id="autostart-switch" aria-label="Start when I sign in" disabled><span class="track"></span></label>
               </div>
               <p class="alert" id="autostart-error" hidden></p>
+            </div>
+            <div class="card">
+              <div class="setting-row">
+                <div class="setting-text"><strong>Check for updates</strong><span class="muted small">Once a day, the agent asks GitHub for the newest version number and tells you here, and your phone, if there is one. Nothing else is sent, although GitHub sees your IP address, as any website would. Off by default.</span></div>
+                <label class="switch"><input type="checkbox" id="update-switch" aria-label="Check for updates"><span class="track"></span></label>
+              </div>
+              <p class="muted small"><span id="update-state"></span> <button class="link" id="update-check" type="button" hidden>Check now</button></p>
             </div>
           </section>
 

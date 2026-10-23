@@ -42,6 +42,8 @@ type Config struct {
 	// AllowFileAccess lets paired phones open and download the files the agent lists, not only see
 	// their names. Off unless the person turns it on.
 	AllowFileAccess bool `json:"allow_file_access"`
+	// CheckForUpdates lets the agent ask GitHub, once a day, for the newest version number. Off unless switched on.
+	CheckForUpdates bool `json:"check_for_updates"`
 
 	// Receiving files from paired phones into one drop folder, within limits. Off unless switched on.
 	AllowUploads        bool   `json:"allow_uploads"`

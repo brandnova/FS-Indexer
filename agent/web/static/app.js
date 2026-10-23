@@ -419,6 +419,13 @@
         h('span', { class: 'check-badge' }, step.done ? icon('check') : String(i + 1)),
         h('span', { class: 'check-text' }, step.text),
         !step.done && step.href ? h('a', { class: 'link', href: step.href }, 'Open') : null)));
+    
+    const banner = $('#update-banner');
+    banner.hidden = !s.update_newer;
+    if (s.update_newer) {
+      $('#update-banner-text').textContent = 'Perigee ' + s.update_latest + ' is out, and you have ' + s.version + '. Update the program and the phone app together.';
+      $('#update-banner-link').href = s.update_url || '#';
+    }
 
     renderEvents($('#home-activity'), s.events, 6);
   }
@@ -738,7 +745,7 @@
   // =====================================================================
   async function loadSettings() {
     renderTheme();
-    await Promise.all([loadAutostart(), loadFileAccess(), loadUploads(), loadDevices()]);
+    await Promise.all([loadAutostart(), loadFileAccess(), loadUploads(), loadDevices(), loadUpdate()]);
     renderAdvancedInfo();
   }
 
@@ -1008,6 +1015,38 @@
       showStopped('The agent has stopped', 'You can close this tab. Start the agent again whenever you want to update your phone.');
     } catch (e) { oops(e); }
   }
+
+  // ----- update check -----
+  async function loadUpdate() {
+    try { renderUpdate(await api('/api/update')); } catch (e) { oops(e); }
+  }
+
+  function renderUpdate(u) {
+    $('#update-switch').checked = u.enabled;
+    $('#update-check').hidden = !u.enabled;
+    let text;
+    if (!u.enabled) text = 'Off. You can still look at the releases page yourself.';
+    else if (u.error) text = u.error;
+    else if (!u.checked_at) text = 'Not checked yet.';
+    else if (u.newer) text = 'Version ' + u.latest + ' is available.';
+    else text = 'You have the newest version (checked ' + fmtAgo(u.checked_at) + ').';
+    $('#update-state').textContent = text;
+  }
+
+  $('#update-switch').addEventListener('change', async (e) => {
+    const box = e.target;
+    box.disabled = true;
+    try {
+      renderUpdate(await postJSON('/api/update', { enabled: box.checked }));
+      toast(box.checked ? 'The agent will check for updates once a day' : 'Update checks are off');
+      refresh();
+    } catch (err) { oops(err); }
+    box.disabled = false;
+  });
+
+  $('#update-check').addEventListener('click', (e) => busy(e.currentTarget, async () => {
+    try { renderUpdate(await postJSON('/api/update/check')); refresh(); } catch (err) { oops(err); }
+  }));
 
   // =====================================================================
   // Start

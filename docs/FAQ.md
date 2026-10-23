@@ -2,7 +2,7 @@
 
 ## Is it safe? Do my files leave my computer?
 
-Only the **names, sizes and dates** of the folders you choose are copied to your phone. File **contents** never leave your PC unless you switch on "Open and download files" and then open or download one. Nothing is ever sent to us or to the internet. The one thing to know: the connection between your phone and PC is **not encrypted yet**, so use it on a network you trust. See the [security model](SECURITY_MODEL.md).
+Only the **names, sizes and dates** of the folders you choose are copied to your phone. File **contents** never leave your PC unless you switch on "Open and download files" and then open or download one. Nothing is sent to us. The program only contacts the internet if you switch on update checks (off by default), to ask GitHub for the newest version number. The one thing to know: the connection between your phone and PC is **not encrypted yet**, so use it on a network you trust. See the [security model](SECURITY_MODEL.md).
 
 ## My phone can't connect.
 

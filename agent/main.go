@@ -207,6 +207,8 @@ func main() {
 
 	events := NewEventLog(50)
 	ix := NewIndexer(cfg)
+	updates = NewUpdateChecker(ix)
+	go updates.Run(ctx)
 	var scans atomic.Int32
 	ix.OnScan = func(r ScanResult) {
 		reportScan(con, ix.Config(), r, scans.Add(1) == 1)
